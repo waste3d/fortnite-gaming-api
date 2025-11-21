@@ -1,7 +1,7 @@
 package client
 
 import (
-	authpb "gameplatform/services/api-gateway/pkg/authpb/proto/auth"
+	authpb "api-gateway/pkg/authpb/proto/auth"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

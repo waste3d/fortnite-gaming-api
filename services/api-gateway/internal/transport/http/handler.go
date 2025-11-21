@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"gameplatform/services/api-gateway/internal/client"
-	authpb "gameplatform/services/api-gateway/pkg/authpb/proto/auth"
+	"api-gateway/internal/client"
+	authpb "api-gateway/pkg/authpb/proto/auth"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

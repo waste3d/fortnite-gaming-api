@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
-	"gameplatform/services/api-gateway/internal/client"
-	"gameplatform/services/api-gateway/internal/config"
-	handlers "gameplatform/services/api-gateway/internal/transport/http"
+	"api-gateway/internal/client"
+	"api-gateway/internal/config"
+	handlers "api-gateway/internal/transport/http"
 )
 
 func main() {
