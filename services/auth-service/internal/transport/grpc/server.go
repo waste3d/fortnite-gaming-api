@@ -1,9 +1,9 @@
 package grpc_handler
 
 import (
+	"auth-service/internal/application"
+	authpb "auth-service/pkg/authpb/proto/auth"
 	"context"
-	"gameplatform/services/auth-service/internal/application"
-	authpb "gameplatform/services/auth-service/pkg/authpb/proto/auth"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

@@ -1,9 +1,9 @@
 package repository
 
 import (
+	"auth-service/internal/domain"
 	"context"
 	"errors"
-	"gameplatform/services/auth-service/internal/domain"
 	"time"
 
 	"github.com/google/uuid"

@@ -1,12 +1,12 @@
 package application
 
 import (
+	"auth-service/internal/domain"
+	"auth-service/internal/infrastructure/cache"
+	"auth-service/internal/infrastructure/repository"
+	"auth-service/internal/infrastructure/security"
 	"context"
 	"errors"
-	"gameplatform/services/auth-service/internal/domain"
-	"gameplatform/services/auth-service/internal/infrastructure/cache"
-	"gameplatform/services/auth-service/internal/infrastructure/repository"
-	"gameplatform/services/auth-service/internal/infrastructure/security"
 	"time"
 
 	"github.com/google/uuid"
