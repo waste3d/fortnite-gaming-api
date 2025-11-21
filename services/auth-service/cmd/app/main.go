@@ -1,13 +1,6 @@
 package main
 
 import (
-	"auth-service/internal/application"
-	"auth-service/internal/config"
-	"auth-service/internal/domain"
-	"auth-service/internal/infrastructure/cache"
-	"auth-service/internal/infrastructure/repository"
-	"auth-service/internal/infrastructure/security"
-	grpc_handler "auth-service/internal/transport/grpc"
 	authpb "auth-service/pkg/authpb/proto/auth"
 	"context"
 	"fmt"
@@ -16,6 +9,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"auth-service/config"
+	"auth-service/internal/domain"
+	"auth-service/internal/infrastructure/application/usecase"
+	"auth-service/internal/infrastructure/cache"
+	"auth-service/internal/infrastructure/repository"
+	"auth-service/internal/infrastructure/security"
+	grpc_server "auth-service/internal/transport/grpc"
 
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
@@ -54,8 +55,8 @@ func main() {
 	hasher := security.NewPasswordHasher()
 	tokenManager := security.NewTokenManager(config.AccessSecret, config.RefreshSecret)
 
-	authUseCase := application.NewAuthUseCase(userRepo, tokenCache, hasher, tokenManager)
-	authServer := grpc_handler.NewAuthServer(authUseCase)
+	authUseCase := usecase.NewAuthUseCase(userRepo, tokenCache, hasher, tokenManager)
+	authServer := grpc_server.NewAuthServer(authUseCase)
 
 	lis, err := net.Listen("tcp", config.GRPCPort)
 	if err != nil {

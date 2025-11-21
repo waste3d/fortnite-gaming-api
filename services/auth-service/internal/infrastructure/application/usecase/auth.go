@@ -1,13 +1,13 @@
-package application
+package usecase
 
 import (
+	"context"
+	"errors"
+
 	"auth-service/internal/domain"
 	"auth-service/internal/infrastructure/cache"
 	"auth-service/internal/infrastructure/repository"
 	"auth-service/internal/infrastructure/security"
-	"context"
-	"errors"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -34,24 +34,21 @@ func NewAuthUseCase(
 }
 
 func (uc *AuthUseCase) Register(ctx context.Context, username, email, password string) (string, error) {
-	hashPassword, err := uc.hasher.Hash(password)
+	hash, err := uc.hasher.Hash(password)
 	if err != nil {
 		return "", err
 	}
 
 	user := &domain.User{
-		ID:        uuid.New(),
-		Username:  username,
-		Email:     email,
-		Password:  hashPassword,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:       uuid.New(),
+		Username: username,
+		Email:    email,
+		Password: hash,
 	}
 
 	if err := uc.userRepo.Create(ctx, user); err != nil {
 		return "", err
 	}
-
 	return user.ID.String(), nil
 }
 
@@ -60,24 +57,23 @@ func (uc *AuthUseCase) Login(ctx context.Context, email, password string) (strin
 	if err != nil {
 		return "", "", errors.New("invalid credentials")
 	}
-
 	if err := uc.hasher.Compare(user.Password, password); err != nil {
 		return "", "", errors.New("invalid credentials")
 	}
-
 	return uc.generateAndSaveTokens(ctx, user.ID.String())
 }
 
 func (uc *AuthUseCase) Refresh(ctx context.Context, oldRefreshToken string) (string, string, error) {
 	userID, err := uc.tokenManager.ValidateRefreshToken(oldRefreshToken)
 	if err != nil {
-		return "", "", errors.New("invalid refresh token")
-	}
-	cachedUserID, err := uc.tokenCache.CheckRefresh(ctx, oldRefreshToken)
-	if err != nil || cachedUserID != userID {
-		return "", "", errors.New("refresh token revoked or expired")
+		return "", "", err
 	}
 
+	cachedID, err := uc.tokenCache.CheckRefresh(ctx, oldRefreshToken)
+	if err != nil || cachedID != userID {
+		return "", "", errors.New("token revoked")
+	}
+	// Удаляем старый
 	_ = uc.tokenCache.DeleteRefresh(ctx, oldRefreshToken)
 
 	return uc.generateAndSaveTokens(ctx, userID)
@@ -97,10 +93,8 @@ func (uc *AuthUseCase) generateAndSaveTokens(ctx context.Context, userID string)
 		return "", "", err
 	}
 
-	// Сохраняем refresh в Redis
 	if err := uc.tokenCache.SaveRefresh(ctx, userID, refresh); err != nil {
 		return "", "", err
 	}
-
 	return access, refresh, nil
 }

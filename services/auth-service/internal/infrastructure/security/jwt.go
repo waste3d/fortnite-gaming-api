@@ -19,25 +19,25 @@ func NewTokenManager(accessSecret, refreshSecret string) *TokenManager {
 	}
 }
 
-// Generate возвращает access, refresh и их TTL
 func (m *TokenManager) Generate(userID string) (string, string, error) {
-	// 1. Access Token (короткий, 15 мин)
-	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	// Access (15 min)
+	at := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  userID,
 		"exp":  time.Now().Add(15 * time.Minute).Unix(),
 		"type": "access",
-	}).SignedString(m.accessSecret)
+	})
+	accessToken, err := at.SignedString(m.accessSecret)
 	if err != nil {
 		return "", "", err
 	}
 
-	// 2. Refresh Token (длинный, 7 дней)
-	// Мы добавляем уникальный ID (например timestamp), чтобы токены отличались
-	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	// Refresh (7 days)
+	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  userID,
 		"exp":  time.Now().Add(7 * 24 * time.Hour).Unix(),
 		"type": "refresh",
-	}).SignedString(m.refreshSecret)
+	})
+	refreshToken, err := rt.SignedString(m.refreshSecret)
 	if err != nil {
 		return "", "", err
 	}
@@ -45,7 +45,6 @@ func (m *TokenManager) Generate(userID string) (string, string, error) {
 	return accessToken, refreshToken, nil
 }
 
-// Validate проверяет токен и возвращает userID
 func (m *TokenManager) ValidateAccessToken(tokenStr string) (string, error) {
 	return m.validate(tokenStr, m.accessSecret)
 }
@@ -61,7 +60,6 @@ func (m *TokenManager) validate(tokenStr string, secret []byte) (string, error) 
 		}
 		return secret, nil
 	})
-
 	if err != nil {
 		return "", err
 	}
@@ -69,6 +67,5 @@ func (m *TokenManager) validate(tokenStr string, secret []byte) (string, error) 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		return claims["sub"].(string), nil
 	}
-
 	return "", errors.New("invalid token")
 }

@@ -1,15 +1,17 @@
 package repository
 
 import (
-	"auth-service/internal/domain"
 	"context"
 	"errors"
 	"time"
+
+	"auth-service/internal/domain"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
+// GORM Модель
 type UserGorm struct {
 	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Username  string    `gorm:"uniqueIndex;not null;size:50"`
@@ -19,29 +21,18 @@ type UserGorm struct {
 	UpdatedAt time.Time
 }
 
-func (u *UserGorm) TableName() string {
+func (UserGorm) TableName() string {
 	return "users"
 }
 
-func toGormUser(u *domain.User) *UserGorm {
-	return &UserGorm{
-		ID:        u.ID,
-		Username:  u.Username,
-		Email:     u.Email,
-		Password:  u.Password,
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
-	}
-}
-
-func toDomainUser(u *UserGorm) *domain.User {
+func (ug *UserGorm) ToDomain() *domain.User {
 	return &domain.User{
-		ID:        u.ID,
-		Username:  u.Username,
-		Email:     u.Email,
-		Password:  u.Password,
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
+		ID:        ug.ID,
+		Username:  ug.Username,
+		Email:     ug.Email,
+		Password:  ug.Password,
+		CreatedAt: ug.CreatedAt,
+		UpdatedAt: ug.UpdatedAt,
 	}
 }
 
@@ -54,7 +45,12 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 }
 
 func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
-	gormUser := toGormUser(user)
+	gormUser := &UserGorm{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+		Password: user.Password,
+	}
 
 	result := r.db.WithContext(ctx).Create(gormUser)
 	if result.Error != nil {
@@ -63,37 +59,14 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 		}
 		return result.Error
 	}
-
-	user.ID = gormUser.ID
 	return nil
 }
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	var userModel UserGorm
-
 	err := r.db.WithContext(ctx).Where("email = ?", email).First(&userModel).Error
-
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrUserNotFound
-		}
-		return nil, err
+		return nil, err // GORM вернет ErrRecordNotFound, обработаем в UseCase
 	}
-
-	return toDomainUser(&userModel), nil
-}
-
-func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
-	var userModel UserGorm
-
-	err := r.db.WithContext(ctx).First(&userModel, "id = ?", id).Error
-
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, domain.ErrUserNotFound
-		}
-		return nil, err
-	}
-
-	return toDomainUser(&userModel), nil
+	return userModel.ToDomain(), nil
 }

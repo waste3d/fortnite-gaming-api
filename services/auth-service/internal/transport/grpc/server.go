@@ -1,9 +1,11 @@
-package grpc_handler
+package grpc_server
 
 import (
-	"auth-service/internal/application"
-	authpb "auth-service/pkg/authpb/proto/auth"
 	"context"
+
+	"auth-service/internal/infrastructure/application/usecase"
+
+	authpb "auth-service/pkg/authpb/proto/auth"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -11,39 +13,27 @@ import (
 
 type AuthServer struct {
 	authpb.UnimplementedAuthServiceServer
-	useCase *application.AuthUseCase
+	useCase *usecase.AuthUseCase
 }
 
-func NewAuthServer(useCase *application.AuthUseCase) *AuthServer {
-	return &AuthServer{
-		useCase: useCase,
-	}
+func NewAuthServer(uc *usecase.AuthUseCase) *AuthServer {
+	return &AuthServer{useCase: uc}
 }
 
 func (s *AuthServer) Register(ctx context.Context, req *authpb.RegisterRequest) (*authpb.RegisterResponse, error) {
-	if req.Email == "" || req.Password == "" {
-		return nil, status.Error(codes.InvalidArgument, "email and password required")
-	}
-
 	userID, err := s.useCase.Register(ctx, req.Username, req.Email, req.Password)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
 	return &authpb.RegisterResponse{UserId: userID}, nil
 }
 
 func (s *AuthServer) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.LoginResponse, error) {
-	if req.Email == "" || req.Password == "" {
-		return nil, status.Error(codes.InvalidArgument, "email and password required")
-	}
-
-	accessToken, refreshToken, err := s.useCase.Login(ctx, req.Email, req.Password)
+	access, refresh, err := s.useCase.Login(ctx, req.Email, req.Password)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
 	}
-
-	return &authpb.LoginResponse{AccessToken: accessToken, RefreshToken: refreshToken}, nil
+	return &authpb.LoginResponse{AccessToken: access, RefreshToken: refresh}, nil
 }
 
 func (s *AuthServer) Validate(ctx context.Context, req *authpb.ValidateRequest) (*authpb.ValidateResponse, error) {
@@ -63,9 +53,6 @@ func (s *AuthServer) RefreshToken(ctx context.Context, req *authpb.RefreshTokenR
 }
 
 func (s *AuthServer) Logout(ctx context.Context, req *authpb.LogoutRequest) (*authpb.LogoutResponse, error) {
-	err := s.useCase.Logout(ctx, req.RefreshToken)
-	if err != nil {
-		return &authpb.LogoutResponse{Success: false}, nil
-	}
+	_ = s.useCase.Logout(ctx, req.RefreshToken)
 	return &authpb.LogoutResponse{Success: true}, nil
 }
