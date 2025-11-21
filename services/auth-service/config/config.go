@@ -20,13 +20,27 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.AddConfigPath(path)
 	viper.SetConfigName("app")
 	viper.SetConfigType("env")
+
 	viper.AutomaticEnv()
 
-	if err = viper.ReadInConfig(); err != nil {
-		// Если файла нет, не страшно, если есть ENV переменные
+	// ВАЖНО: Явно биндим переменные, чтобы Viper их видел без файла
+	viper.BindEnv("DB_HOST")
+	viper.BindEnv("DB_PORT")
+	viper.BindEnv("DB_USER")
+	viper.BindEnv("DB_PASSWORD")
+	viper.BindEnv("DB_NAME")
+	viper.BindEnv("REDIS_ADDR")
+	viper.BindEnv("ACCESS_SECRET")
+	viper.BindEnv("REFRESH_SECRET")
+	viper.BindEnv("GRPC_PORT")
+
+	// Пытаемся прочитать файл, но не умираем, если его нет
+	err = viper.ReadInConfig()
+	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return
 		}
+		// Файла нет? Ну и ладно, работаем на ENV
 	}
 
 	err = viper.Unmarshal(&config)

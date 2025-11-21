@@ -1,14 +1,13 @@
 package config
 
 import (
-	"fmt"
-
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Port       string `mapstructure:"PORT"`
-	AuthSvcUrl string `mapstructure:"AUTH_SVC_URL"`
+	Port           string `mapstructure:"PORT"`
+	AuthSvcUrl     string `mapstructure:"AUTH_SVC_URL"`
+	AllowedOrigins string `mapstructure:"ALLOWED_ORIGINS"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -18,9 +17,16 @@ func LoadConfig(path string) (config Config, err error) {
 
 	viper.AutomaticEnv()
 
+	// ВАЖНО: Явно биндим
+	viper.BindEnv("PORT")
+	viper.BindEnv("AUTH_SVC_URL")
+	viper.BindEnv("ALLOWED_ORIGINS")
+
 	err = viper.ReadInConfig()
 	if err != nil {
-		return config, fmt.Errorf("failed to read config file: %w", err)
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return
+		}
 	}
 
 	err = viper.Unmarshal(&config)
