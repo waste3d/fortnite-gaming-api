@@ -9,9 +9,10 @@ func NewRouter(authHandler *AuthHandler) *gin.Engine {
 	r := gin.Default()
 
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"https://fortzone.ru"}
+	config.AllowOrigins = []string{"https://bazakursov.ru", "http://bazakursov.ru", "https://www.bazakursov.ru"}
 	config.AllowCredentials = true
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
 	r.Use(cors.New(config))
 
 	api := r.Group("/api/v1")
