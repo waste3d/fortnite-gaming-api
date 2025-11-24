@@ -61,11 +61,12 @@ func main() {
 	userClient := userpb.NewUserServiceClient(userConn)
 
 	userRepo := repository.NewUserRepository(db)
+	deviceRepo := repository.NewDeviceRepository(db)
 	tokenCache := cache.NewTokenCache(rdb)
 	hasher := security.NewPasswordHasher()
 	tokenManager := security.NewTokenManager(config.AccessSecret, config.RefreshSecret)
 	emailSender := email.NewEmailSender(config.APIKey, config.SMTPEmail, config.FrontendURL)
-	authUseCase := usecase.NewAuthUseCase(userRepo, tokenCache, hasher, tokenManager, emailSender, userClient)
+	authUseCase := usecase.NewAuthUseCase(userRepo, tokenCache, hasher, tokenManager, emailSender, userClient, deviceRepo)
 	authServer := grpc_server.NewAuthServer(authUseCase)
 
 	lis, err := net.Listen("tcp", config.GRPCPort)

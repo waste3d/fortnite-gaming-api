@@ -34,6 +34,7 @@ func NewAuthUseCase(
 	tm *security.TokenManager,
 	es *email.EmailSender,
 	uc userpb.UserServiceClient,
+	dr *repository.DeviceRepository,
 ) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo:     ur,
@@ -42,6 +43,7 @@ func NewAuthUseCase(
 		tokenManager: tm,
 		emailSender:  es,
 		userClient:   uc,
+		deviceRepo:   dr,
 	}
 }
 
