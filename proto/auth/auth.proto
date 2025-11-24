@@ -17,6 +17,9 @@ service AuthService {
 
   rpc ForgotPassword (ForgotPasswordRequest) returns (ForgotPasswordResponse);
   rpc ResetPassword (ResetPasswordRequest) returns (ResetPasswordResponse);
+
+  rpc RequestEmailChange (RequestEmailChangeRequest) returns (RequestEmailChangeResponse);
+  rpc ConfirmEmailChange (ConfirmEmailChangeRequest) returns (ConfirmEmailChangeResponse);
 }
 
 message RegisterRequest {
@@ -79,4 +82,23 @@ message ResetPasswordRequest {
 
 message ResetPasswordResponse {
   bool success = 1;
+}
+
+message RequestEmailChangeRequest {
+  string user_id = 1;
+  string new_email = 2;
+}
+
+message RequestEmailChangeResponse {
+  bool success = 1;
+  string message = 2; // "Письмо отправлено"
+}
+
+message ConfirmEmailChangeRequest {
+  string token = 1; // Токен из ссылки в письме
+}
+
+message ConfirmEmailChangeResponse {
+  bool success = 1;
+  string message = 2;
 }

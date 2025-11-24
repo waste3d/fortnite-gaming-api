@@ -129,7 +129,7 @@ func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
 						}
 						/* Для поддержки hover в некоторых клиентах */
 						.button:hover {
-							background-color:rgb(212, 45, 45);
+							background-color:rgba(212, 45, 45, 0.42);
 						}
 						.footer {
 							font-size: 12px;

@@ -1,0 +1,75 @@
+syntax = "proto3";
+package user;
+option go_package = "user-service/pkg/userpb";
+
+service UserService {
+  // Вызывается из Auth-сервиса при регистрации
+  rpc CreateProfile (CreateProfileRequest) returns (CreateProfileResponse);
+  
+  // Методы для фронтенда   
+  rpc GetProfile (GetProfileRequest) returns (GetProfileResponse);
+  rpc UpdateProfile (UpdateProfileRequest) returns (UpdateProfileResponse);
+  rpc SetAvatar (SetAvatarRequest) returns (SetAvatarResponse);
+  
+  // Если email меняется в Auth, обновляем его и здесь (для уведомлений)
+  rpc SyncEmail (SyncEmailRequest) returns (SyncEmailResponse);
+}
+
+message CreateProfileRequest {
+  string user_id = 1;
+  string email = 2;
+  string username = 3;
+}
+
+message CreateProfileResponse {
+  string profile_id = 1;
+}
+
+message GetProfileRequest {
+  string user_id = 1;
+}
+
+message CoursePreview {
+  string id = 1;
+  string title = 2;
+  int32 progress_percent = 3;
+  string cover_url = 4;
+}
+
+message GetProfileResponse {
+  string id = 1;
+  string email = 2;
+  string username = 3;
+  int32 avatar_id = 4;
+  string subscription_status = 5;
+  repeated CoursePreview active_courses = 6;
+  repeated CoursePreview completed_courses = 7;
+}
+
+message UpdateProfileRequest {
+  string user_id = 1;
+  string username = 2; // Email меняем через Auth сервис
+}
+
+message UpdateProfileResponse {
+  bool success = 1;
+}
+
+message SetAvatarRequest {
+  string user_id = 1;
+  int32 avatar_id = 2;
+}
+
+message SetAvatarResponse {
+  bool success = 1;
+  int32 avatar_id = 2;
+}
+
+message SyncEmailRequest {
+  string user_id = 1;
+  string new_email = 2;
+}
+
+message SyncEmailResponse {
+  bool success = 1;
+}

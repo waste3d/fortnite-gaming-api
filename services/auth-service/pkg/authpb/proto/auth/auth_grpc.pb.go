@@ -19,13 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_Register_FullMethodName       = "/auth.AuthService/Register"
-	AuthService_Login_FullMethodName          = "/auth.AuthService/Login"
-	AuthService_Validate_FullMethodName       = "/auth.AuthService/Validate"
-	AuthService_RefreshToken_FullMethodName   = "/auth.AuthService/RefreshToken"
-	AuthService_Logout_FullMethodName         = "/auth.AuthService/Logout"
-	AuthService_ForgotPassword_FullMethodName = "/auth.AuthService/ForgotPassword"
-	AuthService_ResetPassword_FullMethodName  = "/auth.AuthService/ResetPassword"
+	AuthService_Register_FullMethodName           = "/auth.AuthService/Register"
+	AuthService_Login_FullMethodName              = "/auth.AuthService/Login"
+	AuthService_Validate_FullMethodName           = "/auth.AuthService/Validate"
+	AuthService_RefreshToken_FullMethodName       = "/auth.AuthService/RefreshToken"
+	AuthService_Logout_FullMethodName             = "/auth.AuthService/Logout"
+	AuthService_ForgotPassword_FullMethodName     = "/auth.AuthService/ForgotPassword"
+	AuthService_ResetPassword_FullMethodName      = "/auth.AuthService/ResetPassword"
+	AuthService_RequestEmailChange_FullMethodName = "/auth.AuthService/RequestEmailChange"
+	AuthService_ConfirmEmailChange_FullMethodName = "/auth.AuthService/ConfirmEmailChange"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -39,6 +41,8 @@ type AuthServiceClient interface {
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	ForgotPassword(ctx context.Context, in *ForgotPasswordRequest, opts ...grpc.CallOption) (*ForgotPasswordResponse, error)
 	ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*ResetPasswordResponse, error)
+	RequestEmailChange(ctx context.Context, in *RequestEmailChangeRequest, opts ...grpc.CallOption) (*RequestEmailChangeResponse, error)
+	ConfirmEmailChange(ctx context.Context, in *ConfirmEmailChangeRequest, opts ...grpc.CallOption) (*ConfirmEmailChangeResponse, error)
 }
 
 type authServiceClient struct {
@@ -119,6 +123,26 @@ func (c *authServiceClient) ResetPassword(ctx context.Context, in *ResetPassword
 	return out, nil
 }
 
+func (c *authServiceClient) RequestEmailChange(ctx context.Context, in *RequestEmailChangeRequest, opts ...grpc.CallOption) (*RequestEmailChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequestEmailChangeResponse)
+	err := c.cc.Invoke(ctx, AuthService_RequestEmailChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) ConfirmEmailChange(ctx context.Context, in *ConfirmEmailChangeRequest, opts ...grpc.CallOption) (*ConfirmEmailChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConfirmEmailChangeResponse)
+	err := c.cc.Invoke(ctx, AuthService_ConfirmEmailChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -130,6 +154,8 @@ type AuthServiceServer interface {
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	ForgotPassword(context.Context, *ForgotPasswordRequest) (*ForgotPasswordResponse, error)
 	ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error)
+	RequestEmailChange(context.Context, *RequestEmailChangeRequest) (*RequestEmailChangeResponse, error)
+	ConfirmEmailChange(context.Context, *ConfirmEmailChangeRequest) (*ConfirmEmailChangeResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -160,6 +186,12 @@ func (UnimplementedAuthServiceServer) ForgotPassword(context.Context, *ForgotPas
 }
 func (UnimplementedAuthServiceServer) ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResetPassword not implemented")
+}
+func (UnimplementedAuthServiceServer) RequestEmailChange(context.Context, *RequestEmailChangeRequest) (*RequestEmailChangeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestEmailChange not implemented")
+}
+func (UnimplementedAuthServiceServer) ConfirmEmailChange(context.Context, *ConfirmEmailChangeRequest) (*ConfirmEmailChangeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfirmEmailChange not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -308,6 +340,42 @@ func _AuthService_ResetPassword_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_RequestEmailChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestEmailChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RequestEmailChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RequestEmailChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RequestEmailChange(ctx, req.(*RequestEmailChangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_ConfirmEmailChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfirmEmailChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ConfirmEmailChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ConfirmEmailChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ConfirmEmailChange(ctx, req.(*ConfirmEmailChangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -342,6 +410,14 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResetPassword",
 			Handler:    _AuthService_ResetPassword_Handler,
+		},
+		{
+			MethodName: "RequestEmailChange",
+			Handler:    _AuthService_RequestEmailChange_Handler,
+		},
+		{
+			MethodName: "ConfirmEmailChange",
+			Handler:    _AuthService_ConfirmEmailChange_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
