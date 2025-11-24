@@ -30,6 +30,7 @@ func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *midd
 			auth.POST("/forgot-password", limiter.Limit("forgot_pass", 1, 5*time.Minute), authHandler.ForgotPassword)
 			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
+		api.GET("/user/email/confirm", userHandler.ConfirmEmailChange)
 		user := api.Group("/user")
 		user.Use(middleware.AuthMiddleware(authClient))
 		{
@@ -37,7 +38,6 @@ func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *midd
 			user.PUT("/profile", userHandler.UpdateProfile)
 			user.POST("/avatar", userHandler.SetAvatar)
 			user.POST("/email/change", userHandler.RequestEmailChange)
-			user.GET("/email/confirm", userHandler.ConfirmEmailChange)
 		}
 	}
 
