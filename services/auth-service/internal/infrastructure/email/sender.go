@@ -61,70 +61,119 @@ func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
 			{
 				Type: "text/html",
 				Value: fmt.Sprintf(`
+				<!DOCTYPE html>
 				<html>
 				<head>
+					<meta charset="utf-8">
+					<meta name="viewport" content="width=device-width, initial-scale=1.0">
+					<title>Сброс пароля</title>
 					<style>
 						body {
-							font-family: Arial, sans-serif;
-							background-color: #0d1b2a;
+							font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+							background-color: #0f0f11; /* Твой основной темный фон */
 							margin: 0;
 							padding: 0;
 							color: #ffffff;
 						}
+						.wrapper {
+							width: 100%%;
+							table-layout: fixed;
+							background-color: #0f0f11;
+							padding-bottom: 40px;
+						}
 						.container {
-							max-width: 600px;
-							margin: 50px auto;
-							background-color: #1b263b;
-							padding: 30px;
-							border-radius: 12px;
-							box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+							max-width: 480px;
+							margin: 40px auto;
+							background-color: #18181b; /* Цвет карточек */
+							padding: 40px;
+							border-radius: 16px; /* Скругление как в интерфейсе */
+							border: 1px solid #27272a; /* Тонкая рамка */
+							box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
 							text-align: center;
 						}
+						.logo {
+							margin-bottom: 30px;
+							font-size: 24px;
+							font-weight: 800;
+							letter-spacing: -0.5px;
+							text-decoration: none;
+						}
+						.logo-white { color: #ffffff; }
+						.logo-teal { color: #2dd4bf; } /* Твой accent-teal */
+						
 						h3 {
 							color: #ffffff;
-							margin-bottom: 20px;
+							margin-top: 0;
+							margin-bottom: 16px;
+							font-size: 20px;
 						}
 						p {
-							color: #d1d1d1;
-							font-size: 16px;
-							line-height: 1.5;
+							color: #a1a1aa; /* Серый текст (text-gray-400) */
+							font-size: 15px;
+							line-height: 1.6;
+							margin-bottom: 30px;
+						}
+						.button-container {
+							margin: 30px 0;
 						}
 						.button {
 							display: inline-block;
-							margin: 30px 0;
-							padding: 15px 30px;
-							background-color: #1b263b;
-							border: 2px solid #ff4d4d;
-							color: #ff4d4d;
+							padding: 14px 32px;
+							background-color: #2dd4bf; /* Teal кнопка */
+							color: #ffffff;
 							text-decoration: none;
-							font-weight: bold;
-							font-size: 16px;
-							border-radius: 6px;
-							box-shadow: 0 0 15px #ff4d4d;
-							transition: all 0.3s ease;
+							font-weight: 600;
+							font-size: 15px;
+							border-radius: 10px;
+							transition: background-color 0.3s ease;
 						}
+						/* Для поддержки hover в некоторых клиентах */
 						.button:hover {
-							background-color: #ff4d4d;
-							color: #1b263b;
-							box-shadow: 0 0 25px #ff1a1a;
+							background-color: #14b8a6;
 						}
 						.footer {
 							font-size: 12px;
-							color: #888888;
-							margin-top: 20px;
+							color: #52525b; /* Более темный серый для футера */
+							margin-top: 40px;
+							border-top: 1px solid #27272a;
+							padding-top: 20px;
+						}
+						.link {
+							color: #2dd4bf;
+							text-decoration: none;
 						}
 					</style>
 				</head>
 				<body>
-					<div class="container">
-						<h3>Сброс пароля</h3>
-						<p>Вы запросили сброс пароля. Нажмите на кнопку ниже, чтобы установить новый пароль.</p>
-						<a href="%s" class="button">Сбросить пароль</a>
-						<p class="footer">Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
+					<div class="wrapper">
+						<div class="container">
+							<!-- Логотип текстом, так надежнее для писем -->
+							<div class="logo">
+								<span class="logo-white">BAZA</span><span class="logo-teal">KURSOV</span>
+							</div>
+		
+							<h3>Восстановление доступа</h3>
+							
+							<p>Мы получили запрос на сброс пароля для вашего аккаунта. <br>Если это были вы, нажмите на кнопку ниже:</p>
+							
+							<div class="button-container">
+								<!-- Ссылка -->
+								<a href="%s" class="button" target="_blank">Установить новый пароль</a>
+							</div>
+							
+							<p style="margin-bottom: 0;">Если кнопка не работает, скопируйте ссылку в браузер:</p>
+							<p style="font-size: 12px; word-break: break-all; margin-top: 10px;">
+								<a href="%s" class="link">%s</a>
+							</p>
+		
+							<div class="footer">
+								Если вы не запрашивали смену пароля, просто проигнорируйте это письмо. Ваш аккаунт в безопасности.
+							</div>
+						</div>
 					</div>
 				</body>
 				</html>
-				`, resetLink),
+				`, resetLink, resetLink, resetLink),
 			},
 		},
 	}
