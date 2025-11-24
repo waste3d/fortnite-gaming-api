@@ -56,3 +56,19 @@ func (s *AuthServer) Logout(ctx context.Context, req *authpb.LogoutRequest) (*au
 	_ = s.useCase.Logout(ctx, req.RefreshToken)
 	return &authpb.LogoutResponse{Success: true}, nil
 }
+
+func (s *AuthServer) ForgotPassword(ctx context.Context, req *authpb.ForgotPasswordRequest) (*authpb.ForgotPasswordResponse, error) {
+	err := s.useCase.ForgotPassword(ctx, req.Email)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to process request")
+	}
+	return &authpb.ForgotPasswordResponse{Success: true}, nil
+}
+
+func (s *AuthServer) ResetPassword(ctx context.Context, req *authpb.ResetPasswordRequest) (*authpb.ResetPasswordResponse, error) {
+	err := s.useCase.ResetPassword(ctx, req.Token, req.NewPassword)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	return &authpb.ResetPasswordResponse{Success: true}, nil
+}

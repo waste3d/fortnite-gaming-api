@@ -70,3 +70,9 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	}
 	return userModel.ToDomain(), nil
 }
+
+func (r *UserRepository) UpdatePassword(ctx context.Context, userID uuid.UUID, newPassword string) error {
+	return r.db.WithContext(ctx).Model(&UserGorm{}).
+		Where("id = ?", userID).
+		Update("password", newPassword).Error
+}

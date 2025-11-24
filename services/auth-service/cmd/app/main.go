@@ -14,6 +14,7 @@ import (
 	"auth-service/internal/domain"
 	"auth-service/internal/infrastructure/application/usecase"
 	"auth-service/internal/infrastructure/cache"
+	"auth-service/internal/infrastructure/email"
 	"auth-service/internal/infrastructure/repository"
 	"auth-service/internal/infrastructure/security"
 	grpc_server "auth-service/internal/transport/grpc"
@@ -54,8 +55,8 @@ func main() {
 	tokenCache := cache.NewTokenCache(rdb)
 	hasher := security.NewPasswordHasher()
 	tokenManager := security.NewTokenManager(config.AccessSecret, config.RefreshSecret)
-
-	authUseCase := usecase.NewAuthUseCase(userRepo, tokenCache, hasher, tokenManager)
+	emailSender := email.NewEmailSender(config.SMTPHost, config.SMTPPort, config.SMTPEmail, config.SMTPPassword, config.FrontendURL)
+	authUseCase := usecase.NewAuthUseCase(userRepo, tokenCache, hasher, tokenManager, emailSender)
 	authServer := grpc_server.NewAuthServer(authUseCase)
 
 	lis, err := net.Listen("tcp", config.GRPCPort)

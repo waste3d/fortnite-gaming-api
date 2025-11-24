@@ -14,6 +14,11 @@ type Config struct {
 	AccessSecret  string `mapstructure:"ACCESS_SECRET"`
 	RefreshSecret string `mapstructure:"REFRESH_SECRET"`
 	GRPCPort      string `mapstructure:"GRPC_PORT"`
+	SMTPHost      string `mapstructure:"SMTP_HOST"`
+	SMTPPort      string `mapstructure:"SMTP_PORT"`
+	SMTPEmail     string `mapstructure:"SMTP_EMAIL"`
+	SMTPPassword  string `mapstructure:"SMTP_PASSWORD"`
+	FrontendURL   string `mapstructure:"FRONTEND_URL"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -33,6 +38,11 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("ACCESS_SECRET")
 	viper.BindEnv("REFRESH_SECRET")
 	viper.BindEnv("GRPC_PORT")
+	viper.BindEnv("SMTP_HOST")
+	viper.BindEnv("SMTP_PORT")
+	viper.BindEnv("SMTP_EMAIL")
+	viper.BindEnv("SMTP_PASSWORD")
+	viper.BindEnv("FRONTEND_URL")
 
 	// Пытаемся прочитать файл, но не умираем, если его нет
 	err = viper.ReadInConfig()

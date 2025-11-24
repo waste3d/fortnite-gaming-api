@@ -6,6 +6,7 @@ import (
 
 	"auth-service/internal/domain"
 	"auth-service/internal/infrastructure/cache"
+	"auth-service/internal/infrastructure/email"
 	"auth-service/internal/infrastructure/repository"
 	"auth-service/internal/infrastructure/security"
 
@@ -17,6 +18,7 @@ type AuthUseCase struct {
 	tokenCache   *cache.TokenCache
 	hasher       *security.PasswordHasher
 	tokenManager *security.TokenManager
+	emailSender  *email.EmailSender
 }
 
 func NewAuthUseCase(
@@ -24,12 +26,14 @@ func NewAuthUseCase(
 	tc *cache.TokenCache,
 	h *security.PasswordHasher,
 	tm *security.TokenManager,
+	es *email.EmailSender,
 ) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo:     ur,
 		tokenCache:   tc,
 		hasher:       h,
 		tokenManager: tm,
+		emailSender:  es,
 	}
 }
 
@@ -97,4 +101,45 @@ func (uc *AuthUseCase) generateAndSaveTokens(ctx context.Context, userID string)
 		return "", "", err
 	}
 	return access, refresh, nil
+}
+
+func (uc *AuthUseCase) ForgotPassword(ctx context.Context, email string) error {
+	user, err := uc.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		// ВАЖНО: С точки зрения безопасности, мы не должны говорить, что email не найден.
+		return err
+	}
+
+	resetToken := uuid.New().String()
+
+	if err := uc.tokenCache.SaveResetToken(ctx, resetToken, user.ID.String()); err != nil {
+		return err
+	}
+
+	go uc.emailSender.SendResetEmail(user.Email, resetToken)
+
+	return nil
+}
+
+func (uc *AuthUseCase) ResetPassword(ctx context.Context, token, newPassword string) error {
+	userIDStr, err := uc.tokenCache.GetResetToken(ctx, token)
+	if err != nil {
+		return errors.New("invalid or expired token")
+	}
+
+	userID, _ := uuid.Parse(userIDStr)
+
+	hash, err := uc.hasher.Hash(newPassword)
+	if err != nil {
+		return err
+	}
+
+	if err := uc.userRepo.UpdatePassword(ctx, userID, hash); err != nil {
+		return err
+	}
+
+	// Удаляем токен, чтобы его нельзя было использовать повторно
+	_ = uc.tokenCache.DeleteResetToken(ctx, token)
+
+	return nil
 }

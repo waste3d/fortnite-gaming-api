@@ -8,14 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AuthHandler struct {
-	client *client.AuthClient
-}
-
-func NewAuthHandler(client *client.AuthClient) *AuthHandler {
-	return &AuthHandler{client: client}
-}
-
 type registerReq struct {
 	Email    string `json:"email" binding:"required,email"`
 	Username string `json:"username" binding:"required"`
@@ -25,6 +17,23 @@ type registerReq struct {
 type loginReq struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
+}
+
+type forgotReq struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type resetReq struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+type AuthHandler struct {
+	client *client.AuthClient
+}
+
+func NewAuthHandler(client *client.AuthClient) *AuthHandler {
+	return &AuthHandler{client: client}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -107,4 +116,43 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	c.SetCookie("refresh_token", "", -1, "/", "localhost", false, true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
+}
+
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req forgotReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err := h.client.Client.ForgotPassword(c, &authpb.ForgotPasswordRequest{
+		Email: req.Email,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "If email exists, a reset link has been sent"})
+}
+
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req resetReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err := h.client.Client.ResetPassword(c, &authpb.ResetPasswordRequest{
+		Token:       req.Token,
+		NewPassword: req.NewPassword,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 }
