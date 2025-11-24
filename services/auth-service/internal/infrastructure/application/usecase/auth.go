@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"log"
 
 	"auth-service/internal/domain"
 	"auth-service/internal/infrastructure/cache"
@@ -116,7 +117,17 @@ func (uc *AuthUseCase) ForgotPassword(ctx context.Context, email string) error {
 		return err
 	}
 
-	go uc.emailSender.SendResetEmail(user.Email, resetToken)
+	log.Printf("Attempting to send email to: %s", user.Email) // <-- ЛОГ 1
+
+	go func() {
+		err := uc.emailSender.SendResetEmail(user.Email, resetToken)
+		if err != nil {
+			// Этот лог покажет точную причину ошибки SMTP
+			log.Printf("ERROR: Failed to send email to %s: %v", user.Email, err)
+		} else {
+			log.Printf("SUCCESS: Email sent to %s", user.Email)
+		}
+	}()
 
 	return nil
 }
