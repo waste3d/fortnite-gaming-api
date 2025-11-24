@@ -1,7 +1,7 @@
 package config
 
 var SubscriptionLimits = map[string]int{
-	"Базовая":      2,
+	"Обычный":      2,
 	"Стандарт":     4,
 	"Расширенный":  5,
 	"Персональный": 6,
