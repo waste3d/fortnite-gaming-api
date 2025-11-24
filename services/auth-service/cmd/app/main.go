@@ -55,7 +55,7 @@ func main() {
 	tokenCache := cache.NewTokenCache(rdb)
 	hasher := security.NewPasswordHasher()
 	tokenManager := security.NewTokenManager(config.AccessSecret, config.RefreshSecret)
-	emailSender := email.NewEmailSender(config.SMTPHost, config.SMTPPort, config.SMTPEmail, config.SMTPPassword, config.FrontendURL)
+	emailSender := email.NewEmailSender(config.APIKey, config.SMTPEmail, config.FrontendURL)
 	authUseCase := usecase.NewAuthUseCase(userRepo, tokenCache, hasher, tokenManager, emailSender)
 	authServer := grpc_server.NewAuthServer(authUseCase)
 
