@@ -25,7 +25,7 @@ func NewEmailSender(apiKey, senderEmail, frontend string) *EmailSender {
 	}
 }
 
-// SendGrid request format
+// Структуры для API SendGrid
 type sgEmail struct {
 	Email string `json:"email"`
 	Name  string `json:"name,omitempty"`
@@ -43,9 +43,48 @@ type sgRequest struct {
 	Content []sgContent `json:"content"`
 }
 
-func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
-	resetLink := fmt.Sprintf("%s/reset-password?token=%s", s.frontend, token)
+// ---------------------------------------------------------
+// Публичные методы (формирование писем)
+// ---------------------------------------------------------
 
+// SendResetEmail отправляет ссылку на сброс пароля
+func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
+	link := fmt.Sprintf("%s/reset-password?token=%s", s.frontend, token)
+	subject := "Восстановление пароля"
+
+	// Используем общий шаблон, меняем только заголовок, текст и текст кнопки
+	htmlBody := s.getHTMLTemplate(
+		"Восстановление доступа",
+		"Мы получили запрос на сброс пароля для вашего аккаунта.<br>Если это были вы, нажмите на кнопку ниже:",
+		"Установить новый пароль",
+		link,
+	)
+
+	return s.send(toEmail, subject, htmlBody)
+}
+
+// SendEmailChangeConfirmation отправляет ссылку на подтверждение смены почты
+func (s *EmailSender) SendEmailChangeConfirmation(toEmail string, token string) error {
+	// Ссылка ведет на фронтенд, который дернет API
+	link := fmt.Sprintf("%s/confirm-email-change?token=%s", s.frontend, token)
+	subject := "Подтверждение смены Email"
+
+	htmlBody := s.getHTMLTemplate(
+		"Смена Email адреса",
+		"Вы запросили смену email адреса на этот почтовый ящик.<br>Для подтверждения нажмите кнопку ниже:",
+		"Подтвердить Email",
+		link,
+	)
+
+	return s.send(toEmail, subject, htmlBody)
+}
+
+// ---------------------------------------------------------
+// Приватные методы (внутренняя кухня)
+// ---------------------------------------------------------
+
+// send выполняет непосредственную отправку через SendGrid API
+func (s *EmailSender) send(toEmail, subject, htmlBody string) error {
 	body := sgRequest{
 		Personalizations: []struct {
 			To []sgEmail `json:"to"`
@@ -56,129 +95,19 @@ func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
 			Email: s.senderEmail,
 			Name:  s.senderName,
 		},
-		Subject: "Восстановление пароля",
+		Subject: subject,
 		Content: []sgContent{
 			{
-				Type: "text/html",
-				Value: fmt.Sprintf(`
-				<!DOCTYPE html>
-				<html>
-				<head>
-					<meta charset="utf-8">
-					<meta name="viewport" content="width=device-width, initial-scale=1.0">
-					<title>Сброс пароля</title>
-					<style>
-						body {
-							font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-							background-color: #0f0f11; /* Твой основной темный фон */
-							margin: 0;
-							padding: 0;
-							color: #ffffff;
-						}
-						.wrapper {
-							width: 100%%;
-							table-layout: fixed;
-							background-color: #0f0f11;
-							padding-bottom: 40px;
-						}
-						.container {
-							max-width: 480px;
-							margin: 40px auto;
-							background-color: #18181b; /* Цвет карточек */
-							padding: 40px;
-							border-radius: 16px; /* Скругление как в интерфейсе */
-							border: 1px solid #27272a; /* Тонкая рамка */
-							box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-							text-align: center;
-						}
-						.logo {
-							margin-bottom: 30px;
-							font-size: 24px;
-							font-weight: 800;
-							letter-spacing: -0.5px;
-							text-decoration: none;
-						}
-						.logo-white { color: #ffffff; }
-						.logo-teal { color:rgb(212, 45, 45); } /* Твой accent-teal */
-						
-						h3 {
-							color: #ffffff;
-							margin-top: 0;
-							margin-bottom: 16px;
-							font-size: 20px;
-						}
-						p {
-							color: #ffffff; /* Серый текст (text-gray-400) */
-							font-size: 15px;
-							line-height: 1.6;
-							margin-bottom: 30px;
-						}
-						.button-container {
-							margin: 30px 0;
-						}
-						.button {
-							display: inline-block;
-							padding: 14px 32px;
-							background-color:rgb(212, 45, 45); /* Teal кнопка */
-							color: #ffffff;
-							text-decoration: none;
-							font-weight: 600;
-							font-size: 15px;
-							border-radius: 10px;
-							transition: background-color 0.3s ease;
-						}
-						/* Для поддержки hover в некоторых клиентах */
-						.button:hover {
-							background-color:rgba(212, 45, 45, 0.42);
-						}
-						.footer {
-							font-size: 12px;
-							color: #52525b; /* Более темный серый для футера */
-							margin-top: 40px;
-							border-top: 1px solid #27272a;
-							padding-top: 20px;
-						}
-						.link {
-							color: #2dd4bf;
-							text-decoration: none;
-						}
-					</style>
-				</head>
-				<body>
-					<div class="wrapper">
-						<div class="container">
-							<!-- Логотип текстом, так надежнее для писем -->
-							<div class="logo">
-								<span class="logo-white">BAZA</span><span class="logo-teal">KURSOV</span>
-							</div>
-		
-							<h3>Восстановление доступа</h3>
-							
-							<p>Мы получили запрос на сброс пароля для вашего аккаунта. <br>Если это были вы, нажмите на кнопку ниже:</p>
-							
-							<div class="button-container">
-								<!-- Ссылка -->
-								<a href="%s" class="button" target="_blank">Установить новый пароль</a>
-							</div>
-							
-							<p style="margin-bottom: 0;">Если кнопка не работает, скопируйте ссылку в браузер:</p>
-							<p style="font-size: 12px; word-break: break-all; margin-top: 10px;">
-								<a href="%s" class="link">%s</a>
-							</p>
-		
-							<div class="footer">
-								Если вы не запрашивали смену пароля, просто проигнорируйте это письмо. Ваш аккаунт в безопасности.
-							</div>
-						</div>
-					</div>
-				</body>
-				</html>
-				`, resetLink, resetLink, resetLink),
+				Type:  "text/html",
+				Value: htmlBody,
 			},
 		},
 	}
 
-	bodyBytes, _ := json.Marshal(body)
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
 
 	req, err := http.NewRequest(
 		"POST",
@@ -199,11 +128,126 @@ func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
 	}
 	defer resp.Body.Close()
 
-	// SendGrid возвращает 202 даже при успехе
+	// SendGrid возвращает 200, 201 или 202 при успехе
 	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("sendgrid error: status=%d body=%s", resp.StatusCode, body)
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("sendgrid error: status=%d body=%s", resp.StatusCode, respBody)
 	}
 
 	return nil
+}
+
+// getHTMLTemplate возвращает HTML строку с подставленными значениями
+func (s *EmailSender) getHTMLTemplate(header, message, buttonText, link string) string {
+	return fmt.Sprintf(`
+	<!DOCTYPE html>
+	<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>%s</title>
+		<style>
+			body {
+				font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+				background-color: #0f0f11;
+				margin: 0;
+				padding: 0;
+				color: #ffffff;
+			}
+			.wrapper {
+				width: 100%%;
+				table-layout: fixed;
+				background-color: #0f0f11;
+				padding-bottom: 40px;
+			}
+			.container {
+				max-width: 480px;
+				margin: 40px auto;
+				background-color: #18181b;
+				padding: 40px;
+				border-radius: 16px;
+				border: 1px solid #27272a;
+				box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+				text-align: center;
+			}
+			.logo {
+				margin-bottom: 30px;
+				font-size: 24px;
+				font-weight: 800;
+				letter-spacing: -0.5px;
+				text-decoration: none;
+			}
+			.logo-white { color: #ffffff; }
+			.logo-teal { color:rgb(212, 45, 45); }
+			
+			h3 {
+				color: #ffffff;
+				margin-top: 0;
+				margin-bottom: 16px;
+				font-size: 20px;
+			}
+			p {
+				color: #ffffff;
+				font-size: 15px;
+				line-height: 1.6;
+				margin-bottom: 30px;
+			}
+			.button-container {
+				margin: 30px 0;
+			}
+			.button {
+				display: inline-block;
+				padding: 14px 32px;
+				background-color:rgb(212, 45, 45);
+				color: #ffffff;
+				text-decoration: none;
+				font-weight: 600;
+				font-size: 15px;
+				border-radius: 10px;
+				transition: background-color 0.3s ease;
+			}
+			.button:hover {
+				background-color:rgba(212, 45, 45, 0.42);
+			}
+			.footer {
+				font-size: 12px;
+				color: #52525b;
+				margin-top: 40px;
+				border-top: 1px solid #27272a;
+				padding-top: 20px;
+			}
+			.link {
+				color: #2dd4bf;
+				text-decoration: none;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="wrapper">
+			<div class="container">
+				<div class="logo">
+					<span class="logo-white">BAZA</span><span class="logo-teal">KURSOV</span>
+				</div>
+
+				<h3>%s</h3>
+				
+				<p>%s</p>
+				
+				<div class="button-container">
+					<a href="%s" class="button" target="_blank">%s</a>
+				</div>
+				
+				<p style="margin-bottom: 0;">Если кнопка не работает, скопируйте ссылку в браузер:</p>
+				<p style="font-size: 12px; word-break: break-all; margin-top: 10px;">
+					<a href="%s" class="link">%s</a>
+				</p>
+
+				<div class="footer">
+					Если вы не запрашивали это действие, просто проигнорируйте письмо. Ваш аккаунт в безопасности.
+				</div>
+			</div>
+		</div>
+	</body>
+	</html>
+	`, header, header, message, link, buttonText, link, link)
 }

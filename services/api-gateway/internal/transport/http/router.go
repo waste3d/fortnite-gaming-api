@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"api-gateway/internal/client"
 	"api-gateway/internal/middleware"
 	"time"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(authHandler *AuthHandler, limiter *middleware.RateLimiter) *gin.Engine {
+func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *middleware.RateLimiter, authClient *client.AuthClient) *gin.Engine {
 	r := gin.Default()
 
 	config := cors.DefaultConfig()
@@ -28,6 +29,15 @@ func NewRouter(authHandler *AuthHandler, limiter *middleware.RateLimiter) *gin.E
 			auth.POST("/logout", authHandler.Logout)
 			auth.POST("/forgot-password", limiter.Limit("forgot_pass", 1, 5*time.Minute), authHandler.ForgotPassword)
 			auth.POST("/reset-password", authHandler.ResetPassword)
+		}
+		user := api.Group("/user")
+		user.Use(middleware.AuthMiddleware(authClient))
+		{
+			user.GET("/profile", userHandler.GetProfile)
+			user.PUT("/profile", userHandler.UpdateProfile)
+			user.POST("/avatar", userHandler.SetAvatar)
+			user.POST("/email/change", userHandler.RequestEmailChange)
+			user.GET("/email/confirm", userHandler.ConfirmEmailChange)
 		}
 	}
 

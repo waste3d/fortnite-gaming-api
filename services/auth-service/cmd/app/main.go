@@ -18,10 +18,11 @@ import (
 	"auth-service/internal/infrastructure/repository"
 	"auth-service/internal/infrastructure/security"
 	grpc_server "auth-service/internal/transport/grpc"
+	userpb "auth-service/pkg/userpb/proto/user"
 
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/credentials/insecure"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -51,12 +52,20 @@ func main() {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
 
+	userConn, err := grpc.NewClient(config.UserSvcUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to User Service: %v", err)
+	}
+	defer userConn.Close()
+
+	userClient := userpb.NewUserServiceClient(userConn)
+
 	userRepo := repository.NewUserRepository(db)
 	tokenCache := cache.NewTokenCache(rdb)
 	hasher := security.NewPasswordHasher()
 	tokenManager := security.NewTokenManager(config.AccessSecret, config.RefreshSecret)
 	emailSender := email.NewEmailSender(config.APIKey, config.SMTPEmail, config.FrontendURL)
-	authUseCase := usecase.NewAuthUseCase(userRepo, tokenCache, hasher, tokenManager, emailSender)
+	authUseCase := usecase.NewAuthUseCase(userRepo, tokenCache, hasher, tokenManager, emailSender, userClient)
 	authServer := grpc_server.NewAuthServer(authUseCase)
 
 	lis, err := net.Listen("tcp", config.GRPCPort)
@@ -66,8 +75,6 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	authpb.RegisterAuthServiceServer(grpcServer, authServer)
-
-	reflection.Register(grpcServer)
 
 	log.Printf("Auth Service is running on port %s...", config.GRPCPort)
 

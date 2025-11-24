@@ -9,6 +9,7 @@ type Config struct {
 	AuthSvcUrl     string `mapstructure:"AUTH_SVC_URL"`
 	AllowedOrigins string `mapstructure:"ALLOWED_ORIGINS"`
 	REDIS_ADDR     string `mapstructure:"REDIS_ADDR"`
+	UserSvcUrl     string `mapstructure:"USER_SVC_URL"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -23,6 +24,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("AUTH_SVC_URL")
 	viper.BindEnv("ALLOWED_ORIGINS")
 	viper.BindEnv("REDIS_ADDR")
+	viper.BindEnv("USER_SVC_URL")
 
 	err = viper.ReadInConfig()
 	if err != nil {

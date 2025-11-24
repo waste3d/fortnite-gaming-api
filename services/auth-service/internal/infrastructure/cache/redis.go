@@ -2,6 +2,8 @@ package cache
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -46,4 +48,25 @@ func (c *TokenCache) GetResetToken(ctx context.Context, token string) (string, e
 
 func (c *TokenCache) DeleteResetToken(ctx context.Context, token string) error {
 	return c.client.Del(ctx, "reset_token:"+token).Err()
+}
+
+func (c *TokenCache) SaveEmailChangeToken(ctx context.Context, token, userID, newEmail string) error {
+	val := userID + "|" + newEmail
+	return c.client.Set(ctx, "email_change:"+token, val, 15*time.Minute).Err()
+}
+
+func (c *TokenCache) GetEmailChangeData(ctx context.Context, token string) (string, string, error) {
+	val, err := c.client.Get(ctx, "email_change:"+token).Result()
+	if err != nil {
+		return "", "", err
+	}
+	parts := strings.Split(val, "|")
+	if len(parts) != 2 {
+		return "", "", errors.New("invalid token data")
+	}
+	return parts[0], parts[1], nil
+}
+
+func (c *TokenCache) DeleteEmailChangeToken(ctx context.Context, token string) {
+	c.client.Del(ctx, "email_change:"+token)
 }

@@ -72,3 +72,19 @@ func (s *AuthServer) ResetPassword(ctx context.Context, req *authpb.ResetPasswor
 	}
 	return &authpb.ResetPasswordResponse{Success: true}, nil
 }
+
+func (s *AuthServer) RequestEmailChange(ctx context.Context, req *authpb.RequestEmailChangeRequest) (*authpb.RequestEmailChangeResponse, error) {
+	err := s.useCase.RequestEmailChange(ctx, req.UserId, req.NewEmail)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &authpb.RequestEmailChangeResponse{Success: true, Message: "Confirmation email sent"}, nil
+}
+
+func (s *AuthServer) ConfirmEmailChange(ctx context.Context, req *authpb.ConfirmEmailChangeRequest) (*authpb.ConfirmEmailChangeResponse, error) {
+	err := s.useCase.ConfirmEmailChange(ctx, req.Token)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	return &authpb.ConfirmEmailChangeResponse{Success: true, Message: "Email updated"}, nil
+}

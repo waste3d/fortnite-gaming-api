@@ -17,6 +17,8 @@ type Config struct {
 	APIKey        string `mapstructure:"API_KEY"`
 	SMTPEmail     string `mapstructure:"SMTP_EMAIL"`
 	FrontendURL   string `mapstructure:"FRONTEND_URL"`
+
+	UserSvcUrl string `mapstructure:"USER_SVC_URL"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -26,7 +28,6 @@ func LoadConfig(path string) (config Config, err error) {
 
 	viper.AutomaticEnv()
 
-	// ВАЖНО: Явно биндим переменные, чтобы Viper их видел без файла
 	viper.BindEnv("DB_HOST")
 	viper.BindEnv("DB_PORT")
 	viper.BindEnv("DB_USER")
@@ -40,13 +41,11 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("SMTP_EMAIL")
 	viper.BindEnv("FRONTEND_URL")
 
-	// Пытаемся прочитать файл, но не умираем, если его нет
 	err = viper.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return
 		}
-		// Файла нет? Ну и ладно, работаем на ENV
 	}
 
 	err = viper.Unmarshal(&config)

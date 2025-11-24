@@ -76,3 +76,9 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, userID uuid.UUID, n
 		Where("id = ?", userID).
 		Update("password", newPassword).Error
 }
+
+func (r *UserRepository) UpdateEmail(ctx context.Context, userID uuid.UUID, newEmail string) error {
+	return r.db.WithContext(ctx).Model(&UserGorm{}).
+		Where("id = ?", userID).
+		Update("email", newEmail).Error
+}

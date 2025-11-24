@@ -10,6 +10,7 @@ import (
 	"auth-service/internal/infrastructure/email"
 	"auth-service/internal/infrastructure/repository"
 	"auth-service/internal/infrastructure/security"
+	userpb "auth-service/pkg/userpb/proto/user"
 
 	"github.com/google/uuid"
 )
@@ -20,6 +21,7 @@ type AuthUseCase struct {
 	hasher       *security.PasswordHasher
 	tokenManager *security.TokenManager
 	emailSender  *email.EmailSender
+	userClient   userpb.UserServiceClient
 }
 
 func NewAuthUseCase(
@@ -28,6 +30,7 @@ func NewAuthUseCase(
 	h *security.PasswordHasher,
 	tm *security.TokenManager,
 	es *email.EmailSender,
+	uc userpb.UserServiceClient,
 ) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo:     ur,
@@ -35,6 +38,7 @@ func NewAuthUseCase(
 		hasher:       h,
 		tokenManager: tm,
 		emailSender:  es,
+		userClient:   uc,
 	}
 }
 
@@ -54,6 +58,18 @@ func (uc *AuthUseCase) Register(ctx context.Context, username, email, password s
 	if err := uc.userRepo.Create(ctx, user); err != nil {
 		return "", err
 	}
+
+	_, err = uc.userClient.CreateProfile(ctx, &userpb.CreateProfileRequest{
+		UserId:   user.ID.String(),
+		Email:    email,
+		Username: username,
+	})
+	if err != nil {
+		// Логируем ошибку, но юзера в Auth создали.
+		// В идеале: удалять юзера из Auth (Rollback)
+		log.Printf("Error creating profile: %v", err)
+	}
+
 	return user.ID.String(), nil
 }
 
@@ -152,5 +168,47 @@ func (uc *AuthUseCase) ResetPassword(ctx context.Context, token, newPassword str
 	// Удаляем токен, чтобы его нельзя было использовать повторно
 	_ = uc.tokenCache.DeleteResetToken(ctx, token)
 
+	return nil
+}
+
+func (uc *AuthUseCase) RequestEmailChange(ctx context.Context, userID, newEmail string) error {
+	// Проверка на занятость
+	exists, _ := uc.userRepo.GetByEmail(ctx, newEmail)
+	if exists != nil {
+		return errors.New("email already taken")
+	}
+
+	token := uuid.New().String()
+	if err := uc.tokenCache.SaveEmailChangeToken(ctx, token, userID, newEmail); err != nil {
+		return err
+	}
+
+	go uc.emailSender.SendEmailChangeConfirmation(newEmail, token)
+	return nil
+}
+
+func (uc *AuthUseCase) ConfirmEmailChange(ctx context.Context, token string) error {
+	userIDStr, newEmail, err := uc.tokenCache.GetEmailChangeData(ctx, token)
+	if err != nil {
+		return errors.New("invalid token")
+	}
+	uid, _ := uuid.Parse(userIDStr)
+
+	// Обновляем в Auth DB
+	if err := uc.userRepo.UpdateEmail(ctx, uid, newEmail); err != nil {
+		return err
+	}
+
+	// Обновляем в User DB (Sync)
+	_, err = uc.userClient.SyncEmail(ctx, &userpb.SyncEmailRequest{
+		UserId:   userIDStr,
+		NewEmail: newEmail,
+	})
+	if err != nil {
+		log.Printf("Failed to sync email with User Service: %v", err)
+		// Тут можно вернуть ошибку, но Email в Auth уже изменен.
+	}
+
+	uc.tokenCache.DeleteEmailChangeToken(ctx, token)
 	return nil
 }
