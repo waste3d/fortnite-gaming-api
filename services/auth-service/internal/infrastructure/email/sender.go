@@ -59,8 +59,66 @@ func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
 		Subject: "Восстановление пароля",
 		Content: []sgContent{
 			{
-				Type:  "text/html",
-				Value: fmt.Sprintf(`<h3>Сброс пароля</h3><a href="%s">Сбросить пароль</a>`, resetLink),
+				Type: "text/html",
+				Value: fmt.Sprintf(`
+				<html>
+				<head>
+					<style>
+						body {
+							font-family: Arial, sans-serif;
+							background-color: #f5f5f5;
+							margin: 0;
+							padding: 0;
+						}
+						.container {
+							max-width: 600px;
+							margin: 50px auto;
+							background-color: #ffffff;
+							padding: 30px;
+							border-radius: 10px;
+							box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+						}
+						h3 {
+							color: #333333;
+							text-align: center;
+						}
+						p {
+							color: #555555;
+							font-size: 16px;
+							line-height: 1.5;
+							text-align: center;
+						}
+						.button {
+							display: block;
+							width: 200px;
+							margin: 30px auto;
+							padding: 15px 0;
+							background-color: #007BFF;
+							color: #ffffff;
+							text-decoration: none;
+							text-align: center;
+							border-radius: 5px;
+							font-weight: bold;
+							font-size: 16px;
+						}
+						.footer {
+							text-align: center;
+							font-size: 12px;
+							color: #999999;
+							margin-top: 20px;
+						}
+					</style>
+				</head>
+				<body>
+					<div class="container">
+						<h3>Сброс пароля</h3>
+						<p>Вы запросили сброс пароля. Нажмите на кнопку ниже, чтобы установить новый пароль.</p>
+						<a href="%s" class="button">Сбросить пароль</a>
+						<p class="footer">Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
+					</div>
+				</body>
+				</html>
+				`, resetLink),
 			},
 		},
 	}
