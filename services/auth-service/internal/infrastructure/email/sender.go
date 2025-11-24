@@ -66,45 +66,51 @@ func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
 					<style>
 						body {
 							font-family: Arial, sans-serif;
-							background-color: #f5f5f5;
+							background-color: #0d1b2a;
 							margin: 0;
 							padding: 0;
+							color: #ffffff;
 						}
 						.container {
 							max-width: 600px;
 							margin: 50px auto;
-							background-color: #ffffff;
+							background-color: #1b263b;
 							padding: 30px;
-							border-radius: 10px;
-							box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+							border-radius: 12px;
+							box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+							text-align: center;
 						}
 						h3 {
-							color: #333333;
-							text-align: center;
+							color: #ffffff;
+							margin-bottom: 20px;
 						}
 						p {
-							color: #555555;
+							color: #d1d1d1;
 							font-size: 16px;
 							line-height: 1.5;
-							text-align: center;
 						}
 						.button {
-							display: block;
-							width: 200px;
-							margin: 30px auto;
-							padding: 15px 0;
-							background-color: #007BFF;
-							color: #ffffff;
+							display: inline-block;
+							margin: 30px 0;
+							padding: 15px 30px;
+							background-color: #1b263b;
+							border: 2px solid #ff4d4d;
+							color: #ff4d4d;
 							text-decoration: none;
-							text-align: center;
-							border-radius: 5px;
 							font-weight: bold;
 							font-size: 16px;
+							border-radius: 6px;
+							box-shadow: 0 0 15px #ff4d4d;
+							transition: all 0.3s ease;
+						}
+						.button:hover {
+							background-color: #ff4d4d;
+							color: #1b263b;
+							box-shadow: 0 0 25px #ff1a1a;
 						}
 						.footer {
-							text-align: center;
 							font-size: 12px;
-							color: #999999;
+							color: #888888;
 							margin-top: 20px;
 						}
 					</style>
