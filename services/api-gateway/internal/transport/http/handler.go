@@ -75,6 +75,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 
 	if err != nil {
+		println("LOGIN ERROR FROM GRPC:", err.Error())
 		if strings.Contains(err.Error(), "limit reached") {
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Device limit reached for your subscription"})
 			return

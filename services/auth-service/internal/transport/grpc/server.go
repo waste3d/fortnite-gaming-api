@@ -31,7 +31,7 @@ func (s *AuthServer) Register(ctx context.Context, req *authpb.RegisterRequest) 
 func (s *AuthServer) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.LoginResponse, error) {
 	access, refresh, err := s.useCase.Login(ctx, req.Email, req.Password, req.DeviceId, req.DeviceName)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &authpb.LoginResponse{AccessToken: access, RefreshToken: refresh}, nil
 }
