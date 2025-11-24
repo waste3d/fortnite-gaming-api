@@ -40,6 +40,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("API_KEY")
 	viper.BindEnv("SMTP_EMAIL")
 	viper.BindEnv("FRONTEND_URL")
+	viper.BindEnv("USER_SVC_URL")
 
 	err = viper.ReadInConfig()
 	if err != nil {
