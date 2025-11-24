@@ -99,7 +99,7 @@ func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
 							text-decoration: none;
 						}
 						.logo-white { color: #ffffff; }
-						.logo-teal { color: #2dd4bf; } /* Твой accent-teal */
+						.logo-teal { color:rgb(212, 45, 45); } /* Твой accent-teal */
 						
 						h3 {
 							color: #ffffff;
@@ -108,7 +108,7 @@ func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
 							font-size: 20px;
 						}
 						p {
-							color: #a1a1aa; /* Серый текст (text-gray-400) */
+							color: #ffffff; /* Серый текст (text-gray-400) */
 							font-size: 15px;
 							line-height: 1.6;
 							margin-bottom: 30px;
@@ -119,7 +119,7 @@ func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
 						.button {
 							display: inline-block;
 							padding: 14px 32px;
-							background-color: #2dd4bf; /* Teal кнопка */
+							background-color:rgb(212, 45, 45); /* Teal кнопка */
 							color: #ffffff;
 							text-decoration: none;
 							font-weight: 600;
@@ -129,7 +129,7 @@ func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
 						}
 						/* Для поддержки hover в некоторых клиентах */
 						.button:hover {
-							background-color: #14b8a6;
+							background-color:rgb(212, 45, 45);
 						}
 						.footer {
 							font-size: 12px;
