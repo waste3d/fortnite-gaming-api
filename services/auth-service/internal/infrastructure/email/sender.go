@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
 
 type EmailSender struct {
-	apiKey      string // Ваш API Key от Brevo
-	senderEmail string // Почта отправителя (нужно подтвердить в Brevo)
+	apiKey      string
+	senderEmail string
 	senderName  string
 	frontend    string
 }
@@ -24,57 +25,71 @@ func NewEmailSender(apiKey, senderEmail, frontend string) *EmailSender {
 	}
 }
 
-// Структуры для JSON запроса Brevo
-type brevoSender struct {
-	Name  string `json:"name"`
+// SendGrid request format
+type sgEmail struct {
 	Email string `json:"email"`
+	Name  string `json:"name,omitempty"`
 }
-type brevoTo struct {
-	Email string `json:"email"`
+type sgContent struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
 }
-type brevoRequest struct {
-	Sender      brevoSender `json:"sender"`
-	To          []brevoTo   `json:"to"`
-	Subject     string      `json:"subject"`
-	HtmlContent string      `json:"htmlContent"`
+type sgRequest struct {
+	Personalizations []struct {
+		To []sgEmail `json:"to"`
+	} `json:"personalizations"`
+	From    sgEmail     `json:"from"`
+	Subject string      `json:"subject"`
+	Content []sgContent `json:"content"`
 }
 
 func (s *EmailSender) SendResetEmail(toEmail string, token string) error {
 	resetLink := fmt.Sprintf("%s/reset-password?token=%s", s.frontend, token)
 
-	reqBody := brevoRequest{
-		Sender:  brevoSender{Name: s.senderName, Email: s.senderEmail},
-		To:      []brevoTo{{Email: toEmail}},
+	body := sgRequest{
+		Personalizations: []struct {
+			To []sgEmail `json:"to"`
+		}{
+			{To: []sgEmail{{Email: toEmail}}},
+		},
+		From: sgEmail{
+			Email: s.senderEmail,
+			Name:  s.senderName,
+		},
 		Subject: "Восстановление пароля",
-		HtmlContent: fmt.Sprintf(`
-			<html><body>
-				<h3>Сброс пароля</h3>
-				<p>Нажмите ссылку ниже:</p>
-				<a href="%s">Сбросить пароль</a>
-			</body></html>`, resetLink),
+		Content: []sgContent{
+			{
+				Type:  "text/html",
+				Value: fmt.Sprintf(`<h3>Сброс пароля</h3><a href="%s">Сбросить пароль</a>`, resetLink),
+			},
+		},
 	}
 
-	bodyBytes, _ := json.Marshal(reqBody)
+	bodyBytes, _ := json.Marshal(body)
 
-	// Создаем HTTP запрос
-	req, err := http.NewRequest("POST", "https://api.brevo.com/v3/smtp/email", bytes.NewBuffer(bodyBytes))
+	req, err := http.NewRequest(
+		"POST",
+		"https://api.sendgrid.com/v3/mail/send",
+		bytes.NewBuffer(bodyBytes),
+	)
 	if err != nil {
 		return err
 	}
 
-	req.Header.Set("accept", "application/json")
-	req.Header.Set("api-key", s.apiKey) // Авторизация через API Key
-	req.Header.Set("content-type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.apiKey)
+	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
+	// SendGrid возвращает 202 даже при успехе
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("failed to send email, status: %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("sendgrid error: status=%d body=%s", resp.StatusCode, body)
 	}
 
 	return nil
