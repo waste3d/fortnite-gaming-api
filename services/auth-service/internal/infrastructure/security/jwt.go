@@ -23,7 +23,7 @@ func (m *TokenManager) Generate(userID string) (string, string, error) {
 	// Access (15 min)
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  userID,
-		"exp":  time.Now().Add(15 * time.Minute).Unix(),
+		"exp":  time.Now().Add(14 * 24 * time.Hour).Unix(),
 		"type": "access",
 	})
 	accessToken, err := at.SignedString(m.accessSecret)
