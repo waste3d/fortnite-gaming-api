@@ -8,7 +8,7 @@
     
     COPY . .
     
-    RUN CGO_ENABLED=0 GOOS=linux go build -o user-service ./cmd/app/main.go
+    RUN CGO_ENABLED=0 GOOS=linux go build -o gateway-app ./cmd/app/main.go
     
     # --- 2. Финальный образ ---
     FROM alpine:latest
@@ -16,9 +16,9 @@
     WORKDIR /root/
     RUN apk --no-cache add ca-certificates
     
-    COPY --from=builder /app/user-service .
+    COPY --from=builder /app/gateway-app .
     
     # Порт HTTP
     EXPOSE 8080
     
-    CMD ["./user-service"]
+    CMD ["./gateway-app"]
