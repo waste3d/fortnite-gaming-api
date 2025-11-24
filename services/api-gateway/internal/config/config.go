@@ -8,6 +8,7 @@ type Config struct {
 	Port           string `mapstructure:"PORT"`
 	AuthSvcUrl     string `mapstructure:"AUTH_SVC_URL"`
 	AllowedOrigins string `mapstructure:"ALLOWED_ORIGINS"`
+	REDIS_ADDR     string `mapstructure:"REDIS_ADDR"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -21,6 +22,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("PORT")
 	viper.BindEnv("AUTH_SVC_URL")
 	viper.BindEnv("ALLOWED_ORIGINS")
+	viper.BindEnv("REDIS_ADDR")
 
 	err = viper.ReadInConfig()
 	if err != nil {

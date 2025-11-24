@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"api-gateway/internal/middleware"
+	"time"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(authHandler *AuthHandler) *gin.Engine {
+func NewRouter(authHandler *AuthHandler, limiter *middleware.RateLimiter) *gin.Engine {
 	r := gin.Default()
 
 	config := cors.DefaultConfig()
@@ -20,10 +23,10 @@ func NewRouter(authHandler *AuthHandler) *gin.Engine {
 		auth := api.Group("/auth")
 		{
 			auth.POST("/register", authHandler.Register)
-			auth.POST("/login", authHandler.Login)
+			auth.POST("/login", limiter.Limit("login", 5, 1*time.Minute), authHandler.Login)
 			auth.POST("/refresh", authHandler.Refresh)
 			auth.POST("/logout", authHandler.Logout)
-			auth.POST("/forgot-password", authHandler.ForgotPassword)
+			auth.POST("/forgot-password", limiter.Limit("forgot_pass", 1, 5*time.Minute), authHandler.ForgotPassword)
 			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 	}
