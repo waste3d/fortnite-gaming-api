@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"log"
+	"time"
 
+	"auth-service/config"
 	"auth-service/internal/domain"
 	"auth-service/internal/infrastructure/cache"
 	"auth-service/internal/infrastructure/email"
@@ -22,6 +24,7 @@ type AuthUseCase struct {
 	tokenManager *security.TokenManager
 	emailSender  *email.EmailSender
 	userClient   userpb.UserServiceClient
+	deviceRepo   *repository.DeviceRepository
 }
 
 func NewAuthUseCase(
@@ -73,7 +76,7 @@ func (uc *AuthUseCase) Register(ctx context.Context, username, email, password s
 	return user.ID.String(), nil
 }
 
-func (uc *AuthUseCase) Login(ctx context.Context, email, password string) (string, string, error) {
+func (uc *AuthUseCase) Login(ctx context.Context, email, password, deviceID, deviceName string) (string, string, error) {
 	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		return "", "", errors.New("invalid credentials")
@@ -81,6 +84,21 @@ func (uc *AuthUseCase) Login(ctx context.Context, email, password string) (strin
 	if err := uc.hasher.Compare(user.Password, password); err != nil {
 		return "", "", errors.New("invalid credentials")
 	}
+
+	profile, err := uc.userClient.GetProfile(ctx, &userpb.GetProfileRequest{
+		UserId: user.ID.String(),
+	})
+
+	subStatus := "Обычный"
+	if err == nil {
+		subStatus = profile.SubscriptionStatus
+	}
+
+	err = uc.checkDeviceLimit(ctx, user.ID, deviceID, deviceName, subStatus)
+	if err != nil {
+		return "", "", err
+	}
+
 	return uc.generateAndSaveTokens(ctx, user.ID.String())
 }
 
@@ -211,4 +229,45 @@ func (uc *AuthUseCase) ConfirmEmailChange(ctx context.Context, token string) err
 
 	uc.tokenCache.DeleteEmailChangeToken(ctx, token)
 	return nil
+}
+
+// Вспомогательная функция проверки
+func (uc *AuthUseCase) checkDeviceLimit(ctx context.Context, userID uuid.UUID, deviceID, deviceName, subStatus string) error {
+	// Проверяем, есть ли устройство
+	existingDevice, err := uc.deviceRepo.Find(ctx, userID, deviceID)
+
+	if err == nil {
+		// Устройство уже есть — просто обновляем дату
+		return uc.deviceRepo.UpdateLastActive(ctx, existingDevice.ID)
+	}
+
+	// Устройства нет. Проверяем лимит.
+	limit, ok := config.SubscriptionLimits[subStatus]
+	if !ok {
+		limit = 1 // Default
+	}
+
+	// Если admin или безлимит
+	if subStatus == "admin" {
+		limit = 10000
+	}
+
+	currentCount, err := uc.deviceRepo.Count(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if currentCount >= int64(limit) {
+		return errors.New("device limit reached for your subscription")
+	}
+
+	// Лимит не превышен — регистрируем
+	newDevice := &domain.Device{
+		UserID:       userID,
+		DeviceID:     deviceID,
+		DeviceName:   deviceName,
+		LastActiveAt: time.Now(),
+		CreatedAt:    time.Now(),
+	}
+	return uc.deviceRepo.Create(ctx, newDevice)
 }

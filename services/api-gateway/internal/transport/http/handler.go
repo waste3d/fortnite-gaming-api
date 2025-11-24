@@ -4,6 +4,7 @@ import (
 	"api-gateway/internal/client"
 	authpb "api-gateway/pkg/authpb/proto/auth"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,8 +16,10 @@ type registerReq struct {
 }
 
 type loginReq struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email      string `json:"email" binding:"required,email"`
+	Password   string `json:"password" binding:"required"`
+	DeviceId   string `json:"device_id" binding:"required"`
+	DeviceName string `json:"device_name"`
 }
 
 type forgotReq struct {
@@ -65,11 +68,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	res, err := h.client.Client.Login(c, &authpb.LoginRequest{
-		Email:    req.Email,
-		Password: req.Password,
+		Email:      req.Email,
+		Password:   req.Password,
+		DeviceId:   req.DeviceId,
+		DeviceName: req.DeviceName,
 	})
 
 	if err != nil {
+		if strings.Contains(err.Error(), "limit reached") {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Device limit reached for your subscription"})
+			return
+		}
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
