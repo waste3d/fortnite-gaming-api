@@ -41,7 +41,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %v", err)
 	}
-	if err := db.AutoMigrate(&domain.User{}); err != nil {
+	if err := db.AutoMigrate(&domain.User{}, &domain.Device{}); err != nil {
 		log.Fatalf("Failed to migrate DB: %v", err)
 	}
 
