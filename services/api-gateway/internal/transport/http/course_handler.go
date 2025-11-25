@@ -4,6 +4,7 @@ import (
 	"api-gateway/internal/client"
 	coursepb "api-gateway/pkg/coursepb/proto/course"
 	userpb "api-gateway/pkg/userpb/proto/user" // <--- Добавили импорт
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -58,6 +59,8 @@ func (h *CourseHandler) GetOne(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Course not found"})
 		return
 	}
+
+	fmt.Printf("DEBUG GATEWAY: Found %d lessons for course %s\n", len(res.Lessons), courseID)
 
 	c.JSON(http.StatusOK, res)
 }
