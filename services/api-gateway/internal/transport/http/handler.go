@@ -88,7 +88,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refresh_token", res.RefreshToken, 7*24*3600, "/", "localhost", false, true)
+	c.SetCookie("refresh_token", res.RefreshToken, 7*24*3600, "/", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"access_token": res.AccessToken,
@@ -111,7 +111,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refresh_token", res.RefreshToken, 7*24*3600, "/", "localhost", false, true)
+	c.SetCookie("refresh_token", res.RefreshToken, 7*24*3600, "/", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"access_token": res.AccessToken,
