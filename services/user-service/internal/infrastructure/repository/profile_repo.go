@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/waste3d/gameplatform-api/services/user-service/internal/domain"
 
@@ -53,4 +54,45 @@ func (r *ProfileRepository) UpdateAvatar(ctx context.Context, id uuid.UUID, avat
 	return r.db.WithContext(ctx).Model(&domain.Profile{}).
 		Where("id = ?", id).
 		Update("avatar_id", avatarID).Error
+}
+
+func (r *ProfileRepository) StartCourse(ctx context.Context, uc *domain.UserCourse) error {
+	// FirstOrCreate чтобы не дублировать, если юзер нажал кнопку дважды
+	return r.db.WithContext(ctx).
+		Where(domain.UserCourse{UserID: uc.UserID, CourseID: uc.CourseID}).
+		Attrs(domain.UserCourse{
+			Title:          uc.Title,
+			CoverURL:       uc.CoverURL,
+			Status:         "active",
+			LastAccessedAt: time.Now(),
+			CreatedAt:      time.Now(),
+		}).
+		FirstOrCreate(uc).Error
+}
+
+func (r *ProfileRepository) UpdateProgress(ctx context.Context, userID uuid.UUID, courseID string, percent int32) (string, error) {
+	status := "active"
+	if percent >= 100 {
+		status = "completed"
+		percent = 100
+	}
+
+	err := r.db.WithContext(ctx).Model(&domain.UserCourse{}).
+		Where("user_id = ? AND course_id = ?", userID, courseID).
+		Updates(map[string]interface{}{
+			"progress_percent": percent,
+			"status":           status,
+			"last_accessed_at": time.Now(),
+		}).Error
+
+	return status, err
+}
+
+func (r *ProfileRepository) GetUserCourses(ctx context.Context, userID uuid.UUID) ([]domain.UserCourse, error) {
+	var courses []domain.UserCourse
+	err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		Order("last_accessed_at desc"). // Сначала последние открытые
+		Find(&courses).Error
+	return courses, err
 }

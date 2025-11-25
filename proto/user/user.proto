@@ -13,6 +13,9 @@ service UserService {
   
   // Если email меняется в Auth, обновляем его и здесь (для уведомлений)
   rpc SyncEmail (SyncEmailRequest) returns (SyncEmailResponse);
+
+  rpc StartCourse(StartCourseRequest) returns (StartCourseResponse);
+  rpc UpdateProgress(UpdateProgressRequest) returns (UpdateProgressResponse);
 }
 
 message CreateProfileRequest {
@@ -73,3 +76,27 @@ message SyncEmailRequest {
 message SyncEmailResponse {
   bool success = 1;
 }
+
+    
+message StartCourseRequest {
+  string user_id = 1;
+  string course_id = 2;
+  string title = 3;      // Приходит с фронта или от Gateway
+  string cover_url = 4;
+}
+
+message StartCourseResponse {
+  bool success = 1;
+}
+
+message UpdateProgressRequest {
+  string user_id = 1;
+  string course_id = 2;
+  int32 progress_percent = 3;
+}
+
+message UpdateProgressResponse {
+  bool success = 1;
+  string status = 2; // Возвращаем новый статус ("completed" если 100%)
+}
+

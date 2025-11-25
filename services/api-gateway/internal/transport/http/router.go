@@ -48,6 +48,8 @@ func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *midd
 			course.GET("/:id", courseHandler.GetOne)
 			course.POST("", courseHandler.Create)
 			course.DELETE("/:id", courseHandler.Delete)
+			course.POST("/:id/start", courseHandler.StartCourse)
+			course.POST("/:id/progress", courseHandler.UpdateProgress)
 		}
 	}
 

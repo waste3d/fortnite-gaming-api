@@ -50,28 +50,6 @@ func (s *UserServer) SyncEmail(ctx context.Context, req *userpb.SyncEmailRequest
 	return &userpb.SyncEmailResponse{Success: true}, nil
 }
 
-func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileRequest) (*userpb.GetProfileResponse, error) {
-	uid, _ := uuid.Parse(req.UserId)
-	profile, err := s.repo.GetByID(ctx, uid)
-	if err != nil {
-		return nil, status.Error(codes.NotFound, "profile not found")
-	}
-
-	// TODO: Get active and completed courses from course service
-	active := []*userpb.CoursePreview{}
-	completed := []*userpb.CoursePreview{}
-
-	return &userpb.GetProfileResponse{
-		Id:                 profile.ID.String(),
-		Email:              profile.Email,
-		Username:           profile.Username,
-		AvatarId:           int32(profile.AvatarID),
-		SubscriptionStatus: profile.SubscriptionStatus,
-		ActiveCourses:      active,
-		CompletedCourses:   completed,
-	}, nil
-}
-
 func (s *UserServer) UpdateProfile(ctx context.Context, req *userpb.UpdateProfileRequest) (*userpb.UpdateProfileResponse, error) {
 	uid, err := uuid.Parse(req.UserId)
 	if err != nil {
@@ -112,5 +90,83 @@ func (s *UserServer) SetAvatar(ctx context.Context, req *userpb.SetAvatarRequest
 	return &userpb.SetAvatarResponse{
 		Success:  true,
 		AvatarId: req.AvatarId,
+	}, nil
+}
+
+func (s *UserServer) StartCourse(ctx context.Context, req *userpb.StartCourseRequest) (*userpb.StartCourseResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+	}
+
+	uc := &domain.UserCourse{
+		UserID:   uid,
+		CourseID: req.CourseId,
+		Title:    req.Title,
+		CoverURL: req.CoverUrl,
+	}
+
+	if err := s.repo.StartCourse(ctx, uc); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to start course: %v", err)
+	}
+
+	return &userpb.StartCourseResponse{Success: true}, nil
+}
+
+func (s *UserServer) UpdateProgress(ctx context.Context, req *userpb.UpdateProgressRequest) (*userpb.UpdateProgressResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+	}
+
+	newStatus, err := s.repo.UpdateProgress(ctx, uid, req.CourseId, req.ProgressPercent)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update progress: %v", err)
+	}
+
+	return &userpb.UpdateProgressResponse{Success: true, Status: newStatus}, nil
+}
+
+func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileRequest) (*userpb.GetProfileResponse, error) {
+	uid, _ := uuid.Parse(req.UserId)
+	profile, err := s.repo.GetByID(ctx, uid)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "profile not found")
+	}
+
+	// 1. Получаем курсы из репозитория
+	userCourses, err := s.repo.GetUserCourses(ctx, uid)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get user courses: %v", err)
+	}
+
+	// Ошибку можно залогировать, но не прерывать запрос профиля
+
+	active := []*userpb.CoursePreview{}
+	completed := []*userpb.CoursePreview{}
+
+	// 2. Раскладываем по спискам
+	for _, c := range userCourses {
+		pb := &userpb.CoursePreview{
+			Id:              c.CourseID,
+			Title:           c.Title,
+			ProgressPercent: c.ProgressPercent,
+			CoverUrl:        c.CoverURL,
+		}
+		if c.Status == "completed" {
+			completed = append(completed, pb)
+		} else {
+			active = append(active, pb)
+		}
+	}
+
+	return &userpb.GetProfileResponse{
+		Id:                 profile.ID.String(),
+		Email:              profile.Email,
+		Username:           profile.Username,
+		AvatarId:           int32(profile.AvatarID),
+		SubscriptionStatus: profile.SubscriptionStatus,
+		ActiveCourses:      active,    // <-- Теперь тут данные
+		CompletedCourses:   completed, // <-- И тут
 	}, nil
 }

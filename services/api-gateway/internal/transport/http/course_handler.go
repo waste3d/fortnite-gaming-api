@@ -118,3 +118,66 @@ func (h *CourseHandler) Delete(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
+
+// ... imports (убедись что userpb импортирован)
+
+// POST /api/v1/courses/:id/start
+func (h *CourseHandler) StartCourse(c *gin.Context) {
+	userID := c.GetString("userId")
+	courseID := c.Param("id")
+
+	// Нам нужны Title и CoverURL. Обычно фронтенд их присылает,
+	// либо мы можем сделать GetCourse запрос к courseClient, чтобы их достать.
+	// Для простоты пусть фронт пришлет их в body, так быстрее (меньше запросов между сервисами)
+	var req struct {
+		Title    string `json:"title"`
+		CoverURL string `json:"cover_url"`
+	}
+	// Если фронт не прислал, можно сделать запрос к h.courseClient.GetCourse
+	// Но давай предположим, что фронт присылает для оптимизации.
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err := h.userClient.Client.StartCourse(c, &userpb.StartCourseRequest{
+		UserId:   userID,
+		CourseId: courseID,
+		Title:    req.Title,
+		CoverUrl: req.CoverURL,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// POST /api/v1/courses/:id/progress
+func (h *CourseHandler) UpdateProgress(c *gin.Context) {
+	userID := c.GetString("userId")
+	courseID := c.Param("id")
+
+	var req struct {
+		Percent int32 `json:"percent"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	res, err := h.userClient.Client.UpdateProgress(c, &userpb.UpdateProgressRequest{
+		UserId:          userID,
+		CourseId:        courseID,
+		ProgressPercent: req.Percent,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "status": res.Status})
+}
