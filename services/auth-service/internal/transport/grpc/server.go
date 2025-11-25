@@ -53,7 +53,7 @@ func (s *AuthServer) RefreshToken(ctx context.Context, req *authpb.RefreshTokenR
 }
 
 func (s *AuthServer) Logout(ctx context.Context, req *authpb.LogoutRequest) (*authpb.LogoutResponse, error) {
-	_ = s.useCase.Logout(ctx, req.RefreshToken)
+	_ = s.useCase.Logout(ctx, req.RefreshToken, req.DeviceId)
 	return &authpb.LogoutResponse{Success: true}, nil
 }
 
@@ -87,4 +87,30 @@ func (s *AuthServer) ConfirmEmailChange(ctx context.Context, req *authpb.Confirm
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	return &authpb.ConfirmEmailChangeResponse{Success: true, Message: "Email updated"}, nil
+}
+
+func (s *AuthServer) GetDevices(ctx context.Context, req *authpb.GetDevicesRequest) (*authpb.GetDevicesResponse, error) {
+	devices, err := s.useCase.GetUserDevices(ctx, req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	var pbDevices []*authpb.DeviceInfo
+	for _, d := range devices {
+		pbDevices = append(pbDevices, &authpb.DeviceInfo{
+			Id:         d.DeviceID,
+			DeviceName: d.DeviceName,
+			LastActive: d.LastActiveAt.String(),
+		})
+	}
+
+	return &authpb.GetDevicesResponse{Devices: pbDevices}, nil
+}
+
+func (s *AuthServer) RemoveDevice(ctx context.Context, req *authpb.RemoveDeviceRequest) (*authpb.RemoveDeviceResponse, error) {
+	err := s.useCase.RemoveDevice(ctx, req.UserId, req.DeviceId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &authpb.RemoveDeviceResponse{Success: true}, nil
 }

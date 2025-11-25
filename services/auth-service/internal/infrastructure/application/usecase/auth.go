@@ -120,7 +120,18 @@ func (uc *AuthUseCase) Refresh(ctx context.Context, oldRefreshToken string) (str
 	return uc.generateAndSaveTokens(ctx, userID)
 }
 
-func (uc *AuthUseCase) Logout(ctx context.Context, refreshToken string) error {
+func (uc *AuthUseCase) Logout(ctx context.Context, refreshToken string, deviceID string) error {
+	// 1. Пытаемся получить UserID из токена, чтобы удалить устройство
+	userIDStr, err := uc.tokenManager.ValidateRefreshToken(refreshToken)
+
+	// Если токен валиден и передан DeviceID, удаляем устройство из БД
+	if err == nil && userIDStr != "" && deviceID != "" {
+		if uid, errParse := uuid.Parse(userIDStr); errParse == nil {
+			_ = uc.deviceRepo.Delete(ctx, uid, deviceID)
+		}
+	}
+
+	// 2. Всегда удаляем сам токен из Redis (разлогин)
 	return uc.tokenCache.DeleteRefresh(ctx, refreshToken)
 }
 
@@ -272,4 +283,20 @@ func (uc *AuthUseCase) checkDeviceLimit(ctx context.Context, userID uuid.UUID, d
 		CreatedAt:    time.Now(),
 	}
 	return uc.deviceRepo.Create(ctx, newDevice)
+}
+
+func (uc *AuthUseCase) GetUserDevices(ctx context.Context, userID string) ([]domain.Device, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+	return uc.deviceRepo.List(ctx, uid)
+}
+
+func (uc *AuthUseCase) RemoveDevice(ctx context.Context, userID, deviceID string) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return err
+	}
+	return uc.deviceRepo.Delete(ctx, uid, deviceID)
 }

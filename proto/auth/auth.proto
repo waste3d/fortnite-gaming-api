@@ -63,6 +63,31 @@ message RefreshTokenResponse {
 
 message LogoutRequest {
   string refresh_token = 1;
+  string device_id = 2; 
+}
+
+message DeviceInfo {
+  string id = 1;          // Внутренний ID или DeviceID с фронта
+  string device_name = 2;
+  string last_active = 3;
+  bool is_current = 4;    // Чтобы подсветить текущее устройство на фронте
+}
+
+message GetDevicesRequest {
+  string user_id = 1;
+}
+
+message GetDevicesResponse {
+  repeated DeviceInfo devices = 1;
+}
+
+message RemoveDeviceRequest {
+  string user_id = 1;
+  string device_id = 2; 
+}
+
+message RemoveDeviceResponse {
+  bool success = 1;
 }
 
 message LogoutResponse {
