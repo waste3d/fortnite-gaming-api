@@ -53,7 +53,7 @@ func main() {
 	// 3. Инициализация хендлеров
 	authHandler := handlers.NewAuthHandler(authClient)
 	userHandler := handlers.NewUserHandler(userClient, authClient)
-	courseHandler := handlers.NewCourseHandler(courseClient)
+	courseHandler := handlers.NewCourseHandler(courseClient, userClient)
 	// 4. Роутер
 	router := handlers.NewRouter(authHandler, userHandler, rateLimiter, authClient, courseHandler)
 

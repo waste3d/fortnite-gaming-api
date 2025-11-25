@@ -3,6 +3,7 @@ package handlers
 import (
 	"api-gateway/internal/client"
 	coursepb "api-gateway/pkg/coursepb/proto/course"
+	userpb "api-gateway/pkg/userpb/proto/user" // <--- Добавили импорт
 	"net/http"
 	"strconv"
 
@@ -10,11 +11,16 @@ import (
 )
 
 type CourseHandler struct {
-	client *client.CourseClient
+	courseClient *client.CourseClient
+	userClient   *client.UserClient // <--- Добавили клиент юзера
 }
 
-func NewCourseHandler(client *client.CourseClient) *CourseHandler {
-	return &CourseHandler{client: client}
+// Обновили конструктор
+func NewCourseHandler(cc *client.CourseClient, uc *client.UserClient) *CourseHandler {
+	return &CourseHandler{
+		courseClient: cc,
+		userClient:   uc,
+	}
 }
 
 // GET /api/v1/courses
@@ -24,7 +30,7 @@ func (h *CourseHandler) List(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	res, err := h.client.Client.GetCourses(c, &coursepb.GetCoursesRequest{
+	res, err := h.courseClient.Client.GetCourses(c, &coursepb.GetCoursesRequest{
 		Search:   search,
 		Category: category,
 		Limit:    int32(limit),
@@ -40,10 +46,10 @@ func (h *CourseHandler) List(c *gin.Context) {
 
 // GET /api/v1/courses/:id
 func (h *CourseHandler) GetOne(c *gin.Context) {
-	userID := c.GetString("userId") // Будет пустой, если нет токена (зависит от middleware)
+	userID := c.GetString("userId")
 	courseID := c.Param("id")
 
-	res, err := h.client.Client.GetCourse(c, &coursepb.GetCourseRequest{
+	res, err := h.courseClient.Client.GetCourse(c, &coursepb.GetCourseRequest{
 		CourseId: courseID,
 		UserId:   userID,
 	})
@@ -58,12 +64,35 @@ func (h *CourseHandler) GetOne(c *gin.Context) {
 
 // POST /api/v1/courses
 func (h *CourseHandler) Create(c *gin.Context) {
+	// 1. Получаем ID текущего юзера
+	userID := c.GetString("userId")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// 2. Делаем запрос в User Service, чтобы узнать статус подписки
+	profile, err := h.userClient.Client.GetProfile(c, &userpb.GetProfileRequest{
+		UserId: userID,
+	})
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to verify user profile"})
+		return
+	}
+
+	// 3. ПРОВЕРКА: Только admin может создавать
+	if profile.SubscriptionStatus != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: admins only"})
+		return
+	}
+
+	// 4. Если админ, создаем курс
 	var req coursepb.CreateCourseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	res, err := h.client.Client.CreateCourse(c, &req)
+	res, err := h.courseClient.Client.CreateCourse(c, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -73,8 +102,16 @@ func (h *CourseHandler) Create(c *gin.Context) {
 
 // DELETE /api/v1/courses/:id
 func (h *CourseHandler) Delete(c *gin.Context) {
+	// 1. Сюда тоже лучше добавить проверку на админа
+	userID := c.GetString("userId")
+	profile, err := h.userClient.Client.GetProfile(c, &userpb.GetProfileRequest{UserId: userID})
+	if err != nil || profile.SubscriptionStatus != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
 	id := c.Param("id")
-	_, err := h.client.Client.DeleteCourse(c, &coursepb.DeleteCourseRequest{Id: id})
+	_, err = h.courseClient.Client.DeleteCourse(c, &coursepb.DeleteCourseRequest{Id: id})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
