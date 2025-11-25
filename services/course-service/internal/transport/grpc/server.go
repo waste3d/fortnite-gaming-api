@@ -62,7 +62,7 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 	}
 
 	// Теперь этот метод вернет курс ВМЕСТЕ с уроками благодаря Preload
-	course, err := s.repo.GetByID(ctx, uid)
+	course, err := s.repo.GetLessonsByID(ctx, uid)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "course not found")
 	}
