@@ -2,10 +2,11 @@ package grpc_server
 
 import (
 	"context"
-	"user-service/internal/domain"
-	"user-service/internal/infrastructure/repository"
 
-	userpb "user-service/pkg/userpb/proto/user"
+	"github.com/waste3d/gameplatform-api/services/user-service/internal/domain"
+	"github.com/waste3d/gameplatform-api/services/user-service/internal/infrastructure/repository"
+
+	userpb "github.com/waste3d/gameplatform-api/services/user-service/pkg/userpb/proto/user"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"

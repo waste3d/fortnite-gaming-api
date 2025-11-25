@@ -5,11 +5,11 @@ import (
 	"log"
 	"net"
 
-	"user-service/config"
-	"user-service/internal/domain"
-	"user-service/internal/infrastructure/repository"
-	grpc_server "user-service/internal/transport/grpc"
-	userpb "user-service/pkg/userpb/proto/user"
+	"github.com/waste3d/gameplatform-api/services/user-service/config"
+	"github.com/waste3d/gameplatform-api/services/user-service/internal/domain"
+	"github.com/waste3d/gameplatform-api/services/user-service/internal/infrastructure/repository"
+	grpc_server "github.com/waste3d/gameplatform-api/services/user-service/internal/transport/grpc"
+	userpb "github.com/waste3d/gameplatform-api/services/user-service/pkg/userpb/proto/user"
 
 	"google.golang.org/grpc"
 	"gorm.io/driver/postgres"

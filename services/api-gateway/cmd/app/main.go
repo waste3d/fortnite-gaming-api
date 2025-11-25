@@ -43,12 +43,19 @@ func main() {
 	}
 	log.Println("Connected to User Service at", cfg.UserSvcUrl)
 
+	// 4. gRPC Клиент для Course
+	courseClient, err := client.NewCourseClient(cfg.CourseSvcUrl)
+	if err != nil {
+		log.Fatalf("Failed to connect to Course Service: %v", err)
+	}
+	log.Println("Connected to Course Service at", cfg.CourseSvcUrl)
+
 	// 3. Инициализация хендлеров
 	authHandler := handlers.NewAuthHandler(authClient)
 	userHandler := handlers.NewUserHandler(userClient, authClient)
-
+	courseHandler := handlers.NewCourseHandler(courseClient)
 	// 4. Роутер
-	router := handlers.NewRouter(authHandler, userHandler, rateLimiter, authClient)
+	router := handlers.NewRouter(authHandler, userHandler, rateLimiter, authClient, courseHandler)
 
 	// 5. Запуск HTTP сервера
 	log.Printf("API Gateway running on port %s", cfg.Port)

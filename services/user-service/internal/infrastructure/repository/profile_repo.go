@@ -2,7 +2,8 @@ package repository
 
 import (
 	"context"
-	"user-service/internal/domain"
+
+	"github.com/waste3d/gameplatform-api/services/user-service/internal/domain"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
