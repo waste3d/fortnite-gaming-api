@@ -11,7 +11,7 @@ jobs:
     # Стратегия matrix позволяет запустить этот job параллельно для каждого сервиса
     strategy:
       matrix:
-        service: [auth-service, api-gateway, user-service] 
+        service: [auth-service, api-gateway, user-service, course-service] 
 
     steps:
       # 1. Скачиваем код
