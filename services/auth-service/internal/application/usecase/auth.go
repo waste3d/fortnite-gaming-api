@@ -121,6 +121,7 @@ func (uc *AuthUseCase) Refresh(ctx context.Context, oldRefreshToken string) (str
 }
 
 func (uc *AuthUseCase) Logout(ctx context.Context, refreshToken string, deviceID string) error {
+	log.Printf("DEBUG: Logout called. DeviceID: '%s'", deviceID)
 	// 1. Пытаемся получить UserID из токена, чтобы удалить устройство
 	userIDStr, err := uc.tokenManager.ValidateRefreshToken(refreshToken)
 

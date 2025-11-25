@@ -11,8 +11,8 @@ import (
 	"syscall"
 
 	"auth-service/config"
+	"auth-service/internal/application/usecase"
 	"auth-service/internal/domain"
-	"auth-service/internal/infrastructure/application/usecase"
 	"auth-service/internal/infrastructure/cache"
 	"auth-service/internal/infrastructure/email"
 	"auth-service/internal/infrastructure/repository"

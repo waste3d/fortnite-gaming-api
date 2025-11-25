@@ -3,7 +3,7 @@ package grpc_server
 import (
 	"context"
 
-	"auth-service/internal/infrastructure/application/usecase"
+	"auth-service/internal/application/usecase"
 
 	authpb "auth-service/pkg/authpb/proto/auth"
 

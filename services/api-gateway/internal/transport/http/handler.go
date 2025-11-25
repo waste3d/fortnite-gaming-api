@@ -119,6 +119,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
+
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil {
 		c.Status(http.StatusOK)
@@ -133,7 +134,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		DeviceId:     req.DeviceId,
 	})
 
-	c.SetCookie("refresh_token", "", -1, "/", "localhost", false, true)
+	c.SetCookie("refresh_token", "", -1, "/", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out"})
 }
