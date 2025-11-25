@@ -34,7 +34,7 @@ func main() {
 	}
 
 	// Миграции
-	db.AutoMigrate(&domain.Course{})
+	db.AutoMigrate(&domain.Course{}, &domain.Lesson{})
 
 	// === SEED (Наполнение данными, если пусто) ===
 	var count int64

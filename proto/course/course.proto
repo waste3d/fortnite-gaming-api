@@ -5,65 +5,70 @@ package course;
 option go_package = "course-service/pkg/coursepb";
 
 service CourseService {
-    // Получить список (с пагинацией, поиском и фильтром)
-    rpc GetCourses (GetCoursesRequest) returns (GetCoursesResponse);
-    // Получить детально (с проверкой прав)
-    rpc GetCourse (GetCourseRequest) returns (GetCourseResponse);
-    // Создать (для админки/postman)
-    rpc CreateCourse (CreateCourseRequest) returns (CreateCourseResponse);
-    // Удалить
-    rpc DeleteCourse (DeleteCourseRequest) returns (DeleteCourseResponse);
+	rpc GetCourses(GetCoursesRequest) returns (GetCoursesResponse);
+	rpc GetCourse(GetCourseRequest) returns (GetCourseResponse);
+	rpc CreateCourse(CreateCourseRequest) returns (CreateCourseResponse);
+	rpc DeleteCourse(DeleteCourseRequest) returns (DeleteCourseResponse);
 }
 
 message Course {
-    string id = 1;
-    string title = 2;
-    string description = 3;
-    string category = 4;
-    string duration = 5;
-    string cover_url = 6;
-    string cloud_link = 7;
+	string id = 1;
+	string title = 2;
+	string description = 3;
+	string category = 4;
+	string duration = 5;
+	string cover_url = 6;
+	string cloud_link = 7;
+}
+
+// === НОВОЕ СООБЩЕНИЕ ===
+message Lesson {
+	string id = 1;
+	string title = 2;
+	string file_link = 3; // Прямая ссылка на файл/плеер
+	int32 order = 4;
 }
 
 message GetCoursesRequest {
-    string search = 1;    
-    string category = 2; 
-    int32 limit = 3;
-    int32 offset = 4;
+	string search = 1;
+	string category = 2;
+	int32 limit = 3;
+	int32 offset = 4;
 }
 
 message GetCoursesResponse {
-    repeated Course courses = 1;
-    int64 total_count = 2;
+	repeated Course courses = 1;
+	int64 total_count = 2;
 }
 
 message GetCourseRequest {
-    string course_id = 1;
-    string user_id = 2; // ID юзера для проверки подписки
+	string course_id = 1;
+	string user_id = 2; 
 }
 
 message GetCourseResponse {
-    Course course = 1;
-    bool has_access = 2; // true, если подписка позволяет
+	Course course = 1;
+	bool has_access = 2;
+	repeated Lesson lessons = 3; // === ДОБАВИЛИ СПИСОК УРОКОВ ===
 }
 
 message CreateCourseRequest {
-    string title = 1;
-    string description = 2;
-    string category = 3;
-    string duration = 4;
-    string cover_url = 5;
-    string cloud_link = 6;
+	string title = 1;
+	string description = 2;
+	string category = 3;
+	string duration = 4;
+	string cover_url = 5;
+	string cloud_link = 6; // Ссылка на папку Mail.ru
 }
 
 message CreateCourseResponse {
-    string id = 1;
+	string id = 1;
 }
 
 message DeleteCourseRequest {
-    string id = 1;
+	string id = 1;
 }
 
 message DeleteCourseResponse {
-    bool success = 1;
+	bool success = 1;
 }

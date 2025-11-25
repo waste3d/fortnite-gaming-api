@@ -55,3 +55,19 @@ func (r *CourseRepository) Create(ctx context.Context, c *domain.Course) error {
 func (r *CourseRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&domain.Course{}, "id = ?", id).Error
 }
+
+func (r *CourseRepository) CreateLessons(ctx context.Context, lessons []domain.Lesson) error {
+	return r.db.WithContext(ctx).Create(&lessons).Error
+}
+
+func (r *CourseRepository) GetLessonsByID(ctx context.Context, id uuid.UUID) (*domain.Course, error) {
+	var course domain.Course
+	// Preload("Lessons") заставит GORM сделать второй запрос и заполнить массив
+	// Order("lessons.order asc") сортирует уроки
+	err := r.db.WithContext(ctx).
+		Preload("Lessons", func(db *gorm.DB) *gorm.DB {
+			return db.Order("\"order\" asc") // сортировка по полю order
+		}).
+		First(&course, "id = ?", id).Error
+	return &course, err
+}

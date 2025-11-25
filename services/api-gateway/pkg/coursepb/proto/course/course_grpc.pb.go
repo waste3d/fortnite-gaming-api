@@ -29,13 +29,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CourseServiceClient interface {
-	// Получить список (с пагинацией, поиском и фильтром)
 	GetCourses(ctx context.Context, in *GetCoursesRequest, opts ...grpc.CallOption) (*GetCoursesResponse, error)
-	// Получить детально (с проверкой прав)
 	GetCourse(ctx context.Context, in *GetCourseRequest, opts ...grpc.CallOption) (*GetCourseResponse, error)
-	// Создать (для админки/postman)
 	CreateCourse(ctx context.Context, in *CreateCourseRequest, opts ...grpc.CallOption) (*CreateCourseResponse, error)
-	// Удалить
 	DeleteCourse(ctx context.Context, in *DeleteCourseRequest, opts ...grpc.CallOption) (*DeleteCourseResponse, error)
 }
 
@@ -91,13 +87,9 @@ func (c *courseServiceClient) DeleteCourse(ctx context.Context, in *DeleteCourse
 // All implementations must embed UnimplementedCourseServiceServer
 // for forward compatibility.
 type CourseServiceServer interface {
-	// Получить список (с пагинацией, поиском и фильтром)
 	GetCourses(context.Context, *GetCoursesRequest) (*GetCoursesResponse, error)
-	// Получить детально (с проверкой прав)
 	GetCourse(context.Context, *GetCourseRequest) (*GetCourseResponse, error)
-	// Создать (для админки/postman)
 	CreateCourse(context.Context, *CreateCourseRequest) (*CreateCourseResponse, error)
-	// Удалить
 	DeleteCourse(context.Context, *DeleteCourseRequest) (*DeleteCourseResponse, error)
 	mustEmbedUnimplementedCourseServiceServer()
 }
