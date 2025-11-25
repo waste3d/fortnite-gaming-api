@@ -31,6 +31,10 @@ type resetReq struct {
 	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
+type logoutReq struct {
+	DeviceId string `json:"device_id"`
+}
+
 type AuthHandler struct {
 	client *client.AuthClient
 }
@@ -121,7 +125,13 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	_, _ = h.client.Client.Logout(c, &authpb.LogoutRequest{RefreshToken: refreshToken})
+	var req logoutReq
+	_ = c.ShouldBindJSON(&req)
+
+	_, _ = h.client.Client.Logout(c, &authpb.LogoutRequest{
+		RefreshToken: refreshToken,
+		DeviceId:     req.DeviceId,
+	})
 
 	c.SetCookie("refresh_token", "", -1, "/", "localhost", false, true)
 
@@ -165,4 +175,35 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
+}
+
+func (h *AuthHandler) GetDevices(c *gin.Context) {
+	userID := c.GetString("userId")
+
+	res, err := h.client.Client.GetDevices(c, &authpb.GetDevicesRequest{
+		UserId: userID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res.Devices)
+}
+
+func (h *AuthHandler) RemoveDevice(c *gin.Context) {
+	userID := c.GetString("userId")
+	deviceID := c.Param("id")
+
+	_, err := h.client.Client.RemoveDevice(c, &authpb.RemoveDeviceRequest{
+		UserId:   userID,
+		DeviceId: deviceID,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }

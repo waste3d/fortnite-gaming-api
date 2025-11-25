@@ -20,6 +20,9 @@ service AuthService {
 
   rpc RequestEmailChange (RequestEmailChangeRequest) returns (RequestEmailChangeResponse);
   rpc ConfirmEmailChange (ConfirmEmailChangeRequest) returns (ConfirmEmailChangeResponse);
+
+  rpc GetDevices (GetDevicesRequest) returns (GetDevicesResponse);
+  rpc RemoveDevice (RemoveDeviceRequest) returns (RemoveDeviceResponse);
 }
 
 message RegisterRequest {

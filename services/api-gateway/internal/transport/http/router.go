@@ -38,6 +38,8 @@ func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *midd
 			user.PUT("/profile", userHandler.UpdateProfile)
 			user.POST("/avatar", userHandler.SetAvatar)
 			user.POST("/email/change", userHandler.RequestEmailChange)
+			user.GET("/devices", authHandler.GetDevices)
+			user.DELETE("/devices/:id", authHandler.RemoveDevice)
 		}
 	}
 
