@@ -6,41 +6,46 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
 
-// Обновили структуру, добавили поле Weblink
+// MailRuItem описывает один элемент (файл или папку) в ответе API
 type MailRuItem struct {
 	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Kind    string `json:"kind"`
-	Weblink string `json:"weblink"` // Важное поле для рекурсии и ссылок
+	Type    string `json:"type"`    // video, image, file, folder
+	Kind    string `json:"kind"`    // file, folder
+	Weblink string `json:"weblink"` // Путь внутри облака
 }
 
+// MailRuResponse структура ответа от API
 type MailRuResponse struct {
 	Body struct {
 		List []MailRuItem `json:"list"`
 	} `json:"body"`
 }
 
+// LessonDTO результат парсинга для сохранения в БД
 type LessonDTO struct {
 	Title    string
 	FileLink string
 }
 
-// ParseFolder - входная точка
+// ParseFolder - основная точка входа
 func ParseFolder(publicLink string) ([]LessonDTO, error) {
-	log.Printf("====== [PARSER START RECURSIVE] ======")
+	log.Printf("====== [PARSER START RECURSIVE v2] ======")
+	log.Printf("Processing root link: %s", publicLink)
 
-	// 1. Извлекаем начальный weblink (например, 8CG5/yHMEs5Q88)
+	// 1. Извлекаем корневой weblink (идентификатор папки)
+	// Ссылка вида https://cloud.mail.ru/public/8CG5/yHMEs5Q88
 	parts := strings.Split(publicLink, "/public/")
 	if len(parts) < 2 {
-		return nil, fmt.Errorf("invalid mail.ru link")
+		return nil, fmt.Errorf("invalid mail.ru link format")
 	}
 	rootWeblink := parts[1]
 
-	// 2. Запускаем рекурсивный сбор
+	// 2. Запускаем рекурсивный обход
 	lessons, err := fetchFolderRecursive(rootWeblink)
 	if err != nil {
 		return nil, err
@@ -56,17 +61,25 @@ func ParseFolder(publicLink string) ([]LessonDTO, error) {
 	return lessons, nil
 }
 
-// fetchFolderRecursive - рекурсивная функция
+// fetchFolderRecursive - рекурсивно обходит папки
 func fetchFolderRecursive(weblink string) ([]LessonDTO, error) {
 	log.Printf("Scanning folder: %s", weblink)
 
-	apiURL := fmt.Sprintf("https://cloud.mail.ru/api/v2/folder?weblink=%s", weblink)
+	// 1. Подготовка URL с правильным кодированием параметров (для пробелов и кириллицы)
+	baseURL := "https://cloud.mail.ru/api/v2/folder"
+	params := url.Values{}
+	params.Add("weblink", weblink)
 
+	// Собираем итоговый URL: .../folder?weblink=encoded_path
+	apiURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+
+	// 2. Создание запроса
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	// Обязательно притворяемся браузером
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 	req.Header.Set("Accept", "*/*")
 
@@ -78,43 +91,54 @@ func fetchFolderRecursive(weblink string) ([]LessonDTO, error) {
 	}
 	defer resp.Body.Close()
 
+	// 3. Обработка ошибок HTTP
 	if resp.StatusCode != 200 {
-		// Если ошибка доступа к подпапке, логируем, но не ломаем весь процесс (возвращаем пусто)
 		log.Printf("[PARSER WARN] Status %d for %s", resp.StatusCode, weblink)
+		// Если не удалось прочитать папку, возвращаем пустой список, но не ломаем весь процесс
 		return nil, nil
 	}
 
+	// 4. Декодирование JSON
 	bodyBytes, _ := io.ReadAll(resp.Body)
 	var mrResp MailRuResponse
 	if err := json.Unmarshal(bodyBytes, &mrResp); err != nil {
+		log.Printf("[PARSER ERROR] JSON Decode failed: %v", err)
 		return nil, err
 	}
 
 	var result []LessonDTO
 
+	// 5. Перебор элементов
 	for _, item := range mrResp.Body.List {
-		// Логика определения файла
+		// Определение: Файл это или Папка?
 		isTargetFile := false
 		if item.Kind == "file" {
 			isTargetFile = true
 		}
-		// На случай если kind пустой, смотрим type
+		// Подстраховка по типу
 		if item.Type == "video" || item.Type == "file" {
 			isTargetFile = true
 		}
-		// Исключаем архивы и текстовые файлы, если нужно (опционально)
-		if strings.HasSuffix(item.Name, ".zip") || strings.HasSuffix(item.Name, ".txt") {
+
+		// Игнорируем архивные файлы, текстовые и pdf (если нужны только видео)
+		lowerName := strings.ToLower(item.Name)
+		if strings.HasSuffix(lowerName, ".zip") ||
+			strings.HasSuffix(lowerName, ".rar") ||
+			strings.HasSuffix(lowerName, ".7z") ||
+			strings.HasSuffix(lowerName, ".txt") ||
+			strings.HasSuffix(lowerName, ".pdf") ||
+			strings.HasSuffix(lowerName, ".docx") {
 			isTargetFile = false
 		}
 
 		if isTargetFile {
-			// Формируем прямую публичную ссылку на файл
-			// API возвращает weblink вида "part1/part2/file.mp4"
-			// Нам нужно склеить с базовым доменом
+			// === ЭТО ФАЙЛ ===
+			// Формируем прямую ссылку. Обычно достаточно склеить base url и weblink файла.
+			// Пример weblink файла: "8CG5/yHMEs5Q88/Модуль 1/video.mp4"
 			fullLink := fmt.Sprintf("https://cloud.mail.ru/public/%s", item.Weblink)
 
+			// Очищаем название от расширения
 			title := item.Name
-			// Убираем расширение из названия
 			if idx := strings.LastIndex(title, "."); idx != -1 {
 				title = title[:idx]
 			}
@@ -124,9 +148,10 @@ func fetchFolderRecursive(weblink string) ([]LessonDTO, error) {
 				FileLink: fullLink,
 			})
 			log.Printf("  -> Found file: %s", title)
+
 		} else if item.Kind == "folder" || item.Type == "folder" {
-			// === РЕКУРСИЯ ===
-			// Если это папка, вызываем эту же функцию для нее
+			// === ЭТО ПАПКА (РЕКУРСИЯ) ===
+			// Вызываем эту же функцию для вложенной папки
 			subLessons, err := fetchFolderRecursive(item.Weblink)
 			if err == nil {
 				result = append(result, subLessons...)
