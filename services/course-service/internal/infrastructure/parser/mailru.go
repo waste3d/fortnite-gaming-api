@@ -10,14 +10,17 @@ import (
 	"time"
 )
 
-// Структура ответа (попытка угадать поля)
+// Обновили структуру, добавили поле Weblink
+type MailRuItem struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Kind    string `json:"kind"`
+	Weblink string `json:"weblink"` // Важное поле для рекурсии и ссылок
+}
+
 type MailRuResponse struct {
 	Body struct {
-		List []struct {
-			Name string `json:"name"`
-			Type string `json:"type"` // video, image, file, folder
-			Kind string `json:"kind"` // file, folder
-		} `json:"list"`
+		List []MailRuItem `json:"list"`
 	} `json:"body"`
 }
 
@@ -26,20 +29,39 @@ type LessonDTO struct {
 	FileLink string
 }
 
+// ParseFolder - входная точка
 func ParseFolder(publicLink string) ([]LessonDTO, error) {
-	log.Printf("====== [PARSER START] ======")
-	log.Printf("Processing link: %s", publicLink)
+	log.Printf("====== [PARSER START RECURSIVE] ======")
 
-	// 1. Извлекаем weblink
+	// 1. Извлекаем начальный weblink (например, 8CG5/yHMEs5Q88)
 	parts := strings.Split(publicLink, "/public/")
 	if len(parts) < 2 {
 		return nil, fmt.Errorf("invalid mail.ru link")
 	}
-	weblink := parts[1]
-	log.Printf("Extracted weblink ID: %s", weblink)
+	rootWeblink := parts[1]
 
-	// 2. Запрос к API
+	// 2. Запускаем рекурсивный сбор
+	lessons, err := fetchFolderRecursive(rootWeblink)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("Total lessons parsed: %d", len(lessons))
+	log.Printf("====== [PARSER END] ======")
+
+	if len(lessons) == 0 {
+		return nil, fmt.Errorf("0 files found in folder structure")
+	}
+
+	return lessons, nil
+}
+
+// fetchFolderRecursive - рекурсивная функция
+func fetchFolderRecursive(weblink string) ([]LessonDTO, error) {
+	log.Printf("Scanning folder: %s", weblink)
+
 	apiURL := fmt.Sprintf("https://cloud.mail.ru/api/v2/folder?weblink=%s", weblink)
+
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return nil, err
@@ -51,76 +73,66 @@ func ParseFolder(publicLink string) ([]LessonDTO, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("[PARSER ERROR] Network error: %v", err)
+		log.Printf("[PARSER ERROR] Network error for %s: %v", weblink, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	log.Printf("API Status Code: %d", resp.StatusCode)
-
-	// 3. Читаем сырой ответ (чтобы видеть в логах)
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	// ЛОГГИРУЕМ СЫРОЙ JSON!
-	log.Printf("--- RAW JSON RESPONSE START ---")
-	log.Printf("%s", string(bodyBytes))
-	log.Printf("--- RAW JSON RESPONSE END ---")
-
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("mail.ru api returned status: %d", resp.StatusCode)
+		// Если ошибка доступа к подпапке, логируем, но не ломаем весь процесс (возвращаем пусто)
+		log.Printf("[PARSER WARN] Status %d for %s", resp.StatusCode, weblink)
+		return nil, nil
 	}
 
-	// 4. Декодируем
+	bodyBytes, _ := io.ReadAll(resp.Body)
 	var mrResp MailRuResponse
 	if err := json.Unmarshal(bodyBytes, &mrResp); err != nil {
-		log.Printf("[PARSER ERROR] JSON Decode failed: %v", err)
 		return nil, err
 	}
 
-	var lessons []LessonDTO
-	cleanBaseLink := strings.TrimRight(publicLink, "/")
+	var result []LessonDTO
 
-	log.Printf("Found items in list: %d", len(mrResp.Body.List))
-
-	// 5. Фильтрация и дебаг каждого элемента
-	for i, item := range mrResp.Body.List {
-		log.Printf("Item [%d]: Name='%s', Type='%s', Kind='%s'", i, item.Name, item.Type, item.Kind)
-
-		// Пробуем разные варианты проверки
+	for _, item := range mrResp.Body.List {
+		// Логика определения файла
 		isTargetFile := false
-
-		// Вариант 1: Kind == file
 		if item.Kind == "file" {
 			isTargetFile = true
 		}
-		// Вариант 2: Type == video (если kind пустой или другой)
+		// На случай если kind пустой, смотрим type
 		if item.Type == "video" || item.Type == "file" {
 			isTargetFile = true
 		}
+		// Исключаем архивы и текстовые файлы, если нужно (опционально)
+		if strings.HasSuffix(item.Name, ".zip") || strings.HasSuffix(item.Name, ".txt") {
+			isTargetFile = false
+		}
 
 		if isTargetFile {
-			fullLink := fmt.Sprintf("%s/%s", cleanBaseLink, item.Name)
+			// Формируем прямую публичную ссылку на файл
+			// API возвращает weblink вида "part1/part2/file.mp4"
+			// Нам нужно склеить с базовым доменом
+			fullLink := fmt.Sprintf("https://cloud.mail.ru/public/%s", item.Weblink)
+
 			title := item.Name
+			// Убираем расширение из названия
 			if idx := strings.LastIndex(title, "."); idx != -1 {
 				title = title[:idx]
 			}
 
-			lessons = append(lessons, LessonDTO{
+			result = append(result, LessonDTO{
 				Title:    title,
 				FileLink: fullLink,
 			})
+			log.Printf("  -> Found file: %s", title)
+		} else if item.Kind == "folder" || item.Type == "folder" {
+			// === РЕКУРСИЯ ===
+			// Если это папка, вызываем эту же функцию для нее
+			subLessons, err := fetchFolderRecursive(item.Weblink)
+			if err == nil {
+				result = append(result, subLessons...)
+			}
 		}
 	}
 
-	log.Printf("Total lessons parsed: %d", len(lessons))
-	log.Printf("====== [PARSER END] ======")
-
-	if len(lessons) == 0 {
-		return nil, fmt.Errorf("0 files found in folder")
-	}
-
-	return lessons, nil
+	return result, nil
 }
