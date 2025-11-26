@@ -71,13 +71,38 @@ func (r *ProfileRepository) StartCourse(ctx context.Context, uc *domain.UserCour
 }
 
 func (r *ProfileRepository) UpdateProgress(ctx context.Context, userID uuid.UUID, courseID string, percent int32) (string, error) {
+	// 1. Сначала получаем текущее состояние записи в БД
+	var existing domain.UserCourse
+	err := r.db.WithContext(ctx).
+		Where("user_id = ? AND course_id = ?", userID, courseID).
+		First(&existing).Error
+
+	if err != nil {
+		return "", err
+	}
+
+	// 2. ЗАЩИТА: Если курс уже завершен, мы НЕ даем сбросить статус обратно в active
+	if existing.Status == "completed" {
+		// Просто обновляем время последнего доступа, чтобы курс поднялся в списке
+		r.db.WithContext(ctx).Model(&existing).Update("last_accessed_at", time.Now())
+		return "completed", nil
+	}
+
+	// 3. ЗАЩИТА: Если новый процент МЕНЬШЕ уже сохраненного (например, зашли с нового устройства),
+	// мы не обновляем прогресс вниз.
+	if percent <= existing.ProgressPercent {
+		r.db.WithContext(ctx).Model(&existing).Update("last_accessed_at", time.Now())
+		return existing.Status, nil
+	}
+
+	// 4. Если всё ок (прогресс растет), обновляем
 	status := "active"
 	if percent >= 100 {
 		status = "completed"
 		percent = 100
 	}
 
-	err := r.db.WithContext(ctx).Model(&domain.UserCourse{}).
+	err = r.db.WithContext(ctx).Model(&domain.UserCourse{}).
 		Where("user_id = ? AND course_id = ?", userID, courseID).
 		Updates(map[string]interface{}{
 			"progress_percent": percent,
