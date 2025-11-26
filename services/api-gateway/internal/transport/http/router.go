@@ -50,6 +50,7 @@ func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *midd
 			course.DELETE("/:id", courseHandler.Delete)
 			course.POST("/:id/start", courseHandler.StartCourse)
 			course.POST("/:id/progress", courseHandler.UpdateProgress)
+			course.POST("/:id/lessons/:lessonId/complete", courseHandler.CompleteLesson)
 		}
 	}
 

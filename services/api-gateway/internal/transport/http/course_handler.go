@@ -184,3 +184,35 @@ func (h *CourseHandler) UpdateProgress(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "status": res.Status})
 }
+
+// POST /api/v1/courses/:id/lessons/:lessonId/complete
+func (h *CourseHandler) CompleteLesson(c *gin.Context) {
+	userID := c.GetString("userId")
+	courseID := c.Param("id")
+	lessonID := c.Param("lessonId")
+
+	// Получаем total_lessons из тела запроса (фронт знает длину массива)
+	// Или можно спросить CourseService, но проще принять от фронта для скорости
+	var req struct {
+		TotalLessons int32 `json:"total_lessons"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	res, err := h.userClient.Client.CompleteLesson(c, &userpb.CompleteLessonRequest{
+		UserId:       userID,
+		CourseId:     courseID,
+		LessonId:     lessonID,
+		TotalLessons: req.TotalLessons,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":     true,
+		"new_percent": res.NewPercent,
+		"status":      res.Status,
+	})
+}
