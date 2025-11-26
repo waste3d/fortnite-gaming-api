@@ -170,3 +170,51 @@ func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileReque
 		CompletedCourses:   completed, // <-- И тут
 	}, nil
 }
+
+func (s *UserServer) CompleteLesson(ctx context.Context, req *userpb.CompleteLessonRequest) (*userpb.CompleteLessonResponse, error) {
+	uid, _ := uuid.Parse(req.UserId)
+
+	// 1. Сохраняем урок как пройденный
+	err := s.repo.AddCompletedLesson(ctx, &domain.CompletedLesson{
+		UserID:   uid,
+		CourseID: req.CourseId,
+		LessonID: req.LessonId,
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to save lesson")
+	}
+
+	// 2. Считаем, сколько всего пройдено
+	completedCount, _ := s.repo.CountCompletedLessons(ctx, uid, req.CourseId)
+
+	// 3. Считаем процент (Backend logic!)
+	var percent int32
+	if req.TotalLessons > 0 {
+		percent = int32((float64(completedCount) / float64(req.TotalLessons)) * 100)
+	}
+	if percent > 100 {
+		percent = 100
+	}
+
+	// 4. Обновляем UserCourse (процент и статус)
+	// Используем ту логику с защитой, которую мы писали в прошлом ответе
+	newStatus, err := s.repo.UpdateProgress(ctx, uid, req.CourseId, percent)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to update progress")
+	}
+
+	return &userpb.CompleteLessonResponse{
+		Success:    true,
+		NewPercent: percent,
+		Status:     newStatus,
+	}, nil
+}
+
+func (s *UserServer) GetCompletedLessons(ctx context.Context, req *userpb.GetCompletedLessonsRequest) (*userpb.GetCompletedLessonsResponse, error) {
+	uid, _ := uuid.Parse(req.UserId)
+	ids, err := s.repo.GetCompletedLessonIDs(ctx, uid, req.CourseId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to get lessons")
+	}
+	return &userpb.GetCompletedLessonsResponse{LessonIds: ids}, nil
+}

@@ -27,6 +27,7 @@ message Lesson {
 	string title = 2;
 	string file_link = 3; // Прямая ссылка на файл/плеер
 	int32 order = 4;
+	bool completed = 5;
 }
 
 message GetCoursesRequest {

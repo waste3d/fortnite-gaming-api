@@ -16,6 +16,9 @@ service UserService {
 
   rpc StartCourse(StartCourseRequest) returns (StartCourseResponse);
   rpc UpdateProgress(UpdateProgressRequest) returns (UpdateProgressResponse);
+
+  rpc CompleteLesson(CompleteLessonRequest) returns (CompleteLessonResponse);
+  rpc GetCompletedLessons(GetCompletedLessonsRequest) returns (GetCompletedLessonsResponse);
 }
 
 message CreateProfileRequest {
@@ -100,3 +103,24 @@ message UpdateProgressResponse {
   string status = 2; // Возвращаем новый статус ("completed" если 100%)
 }
 
+message CompleteLessonRequest {
+  string user_id = 1;
+  string course_id = 2;
+  string lesson_id = 3;
+  int32 total_lessons = 4; // Фронт или Gateway сообщит общее кол-во, чтобы пересчитать %
+}
+
+message CompleteLessonResponse {
+  bool success = 1;
+  int32 new_percent = 2; // Возвращаем новый процент
+  string status = 3;     // Возвращаем новый статус (active/completed)
+}
+
+message GetCompletedLessonsRequest {
+  string user_id = 1;
+  string course_id = 2;
+}
+
+message GetCompletedLessonsResponse {
+  repeated string lesson_ids = 1;
+}

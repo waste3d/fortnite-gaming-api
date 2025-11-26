@@ -19,13 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_CreateProfile_FullMethodName  = "/user.UserService/CreateProfile"
-	UserService_GetProfile_FullMethodName     = "/user.UserService/GetProfile"
-	UserService_UpdateProfile_FullMethodName  = "/user.UserService/UpdateProfile"
-	UserService_SetAvatar_FullMethodName      = "/user.UserService/SetAvatar"
-	UserService_SyncEmail_FullMethodName      = "/user.UserService/SyncEmail"
-	UserService_StartCourse_FullMethodName    = "/user.UserService/StartCourse"
-	UserService_UpdateProgress_FullMethodName = "/user.UserService/UpdateProgress"
+	UserService_CreateProfile_FullMethodName       = "/user.UserService/CreateProfile"
+	UserService_GetProfile_FullMethodName          = "/user.UserService/GetProfile"
+	UserService_UpdateProfile_FullMethodName       = "/user.UserService/UpdateProfile"
+	UserService_SetAvatar_FullMethodName           = "/user.UserService/SetAvatar"
+	UserService_SyncEmail_FullMethodName           = "/user.UserService/SyncEmail"
+	UserService_StartCourse_FullMethodName         = "/user.UserService/StartCourse"
+	UserService_UpdateProgress_FullMethodName      = "/user.UserService/UpdateProgress"
+	UserService_CompleteLesson_FullMethodName      = "/user.UserService/CompleteLesson"
+	UserService_GetCompletedLessons_FullMethodName = "/user.UserService/GetCompletedLessons"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -42,6 +44,8 @@ type UserServiceClient interface {
 	SyncEmail(ctx context.Context, in *SyncEmailRequest, opts ...grpc.CallOption) (*SyncEmailResponse, error)
 	StartCourse(ctx context.Context, in *StartCourseRequest, opts ...grpc.CallOption) (*StartCourseResponse, error)
 	UpdateProgress(ctx context.Context, in *UpdateProgressRequest, opts ...grpc.CallOption) (*UpdateProgressResponse, error)
+	CompleteLesson(ctx context.Context, in *CompleteLessonRequest, opts ...grpc.CallOption) (*CompleteLessonResponse, error)
+	GetCompletedLessons(ctx context.Context, in *GetCompletedLessonsRequest, opts ...grpc.CallOption) (*GetCompletedLessonsResponse, error)
 }
 
 type userServiceClient struct {
@@ -122,6 +126,26 @@ func (c *userServiceClient) UpdateProgress(ctx context.Context, in *UpdateProgre
 	return out, nil
 }
 
+func (c *userServiceClient) CompleteLesson(ctx context.Context, in *CompleteLessonRequest, opts ...grpc.CallOption) (*CompleteLessonResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CompleteLessonResponse)
+	err := c.cc.Invoke(ctx, UserService_CompleteLesson_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetCompletedLessons(ctx context.Context, in *GetCompletedLessonsRequest, opts ...grpc.CallOption) (*GetCompletedLessonsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCompletedLessonsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetCompletedLessons_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -136,6 +160,8 @@ type UserServiceServer interface {
 	SyncEmail(context.Context, *SyncEmailRequest) (*SyncEmailResponse, error)
 	StartCourse(context.Context, *StartCourseRequest) (*StartCourseResponse, error)
 	UpdateProgress(context.Context, *UpdateProgressRequest) (*UpdateProgressResponse, error)
+	CompleteLesson(context.Context, *CompleteLessonRequest) (*CompleteLessonResponse, error)
+	GetCompletedLessons(context.Context, *GetCompletedLessonsRequest) (*GetCompletedLessonsResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -166,6 +192,12 @@ func (UnimplementedUserServiceServer) StartCourse(context.Context, *StartCourseR
 }
 func (UnimplementedUserServiceServer) UpdateProgress(context.Context, *UpdateProgressRequest) (*UpdateProgressResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateProgress not implemented")
+}
+func (UnimplementedUserServiceServer) CompleteLesson(context.Context, *CompleteLessonRequest) (*CompleteLessonResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompleteLesson not implemented")
+}
+func (UnimplementedUserServiceServer) GetCompletedLessons(context.Context, *GetCompletedLessonsRequest) (*GetCompletedLessonsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCompletedLessons not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -314,6 +346,42 @@ func _UserService_UpdateProgress_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_CompleteLesson_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteLessonRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CompleteLesson(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CompleteLesson_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CompleteLesson(ctx, req.(*CompleteLessonRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetCompletedLessons_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCompletedLessonsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetCompletedLessons(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetCompletedLessons_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetCompletedLessons(ctx, req.(*GetCompletedLessonsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -348,6 +416,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateProgress",
 			Handler:    _UserService_UpdateProgress_Handler,
+		},
+		{
+			MethodName: "CompleteLesson",
+			Handler:    _UserService_CompleteLesson_Handler,
+		},
+		{
+			MethodName: "GetCompletedLessons",
+			Handler:    _UserService_GetCompletedLessons_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

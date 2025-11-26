@@ -121,3 +121,32 @@ func (r *ProfileRepository) GetUserCourses(ctx context.Context, userID uuid.UUID
 		Find(&courses).Error
 	return courses, err
 }
+
+// Добавить урок в пройденные
+func (r *ProfileRepository) AddCompletedLesson(ctx context.Context, item *domain.CompletedLesson) error {
+	// FirstOrCreate избегает дубликатов
+	return r.db.WithContext(ctx).FirstOrCreate(item).Error
+}
+
+// Подсчитать количество уникальных пройденных уроков для курса
+func (r *ProfileRepository) CountCompletedLessons(ctx context.Context, userID uuid.UUID, courseID string) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&domain.CompletedLesson{}).
+		Where("user_id = ? AND course_id = ?", userID, courseID).
+		Count(&count).Error
+	return count, err
+}
+
+// Получить все ID пройденных уроков
+func (r *ProfileRepository) GetCompletedLessonIDs(ctx context.Context, userID uuid.UUID, courseID string) ([]string, error) {
+	var lessons []domain.CompletedLesson
+	err := r.db.WithContext(ctx).
+		Where("user_id = ? AND course_id = ?", userID, courseID).
+		Find(&lessons).Error
+
+	var ids []string
+	for _, l := range lessons {
+		ids = append(ids, l.LessonID)
+	}
+	return ids, err
+}
