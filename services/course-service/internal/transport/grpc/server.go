@@ -99,13 +99,30 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 	if hasAccess {
 		resp.Course.CloudLink = course.CloudLink
 
+		var completedIDs map[string]bool
+		completedIDs = make(map[string]bool)
+
+		if req.UserId != "" {
+			// Вызов нового метода GetCompletedLessons (Исправлена опечатка и тип запроса)
+			res, err := s.userClient.GetCompletedLessons(ctx, &userpb.GetCompletedLessonsRequest{
+				UserId:   req.UserId,
+				CourseId: course.ID.String(),
+			})
+			if err == nil {
+				for _, id := range res.LessonIds {
+					completedIDs[id] = true
+				}
+			}
+		}
+
 		// Конвертируем доменные уроки в protobuf
 		for _, l := range course.Lessons {
 			resp.Lessons = append(resp.Lessons, &coursepb.Lesson{
-				Id:       l.ID.String(),
-				Title:    l.Title,
-				FileLink: l.FileLink,
-				Order:    int32(l.Order),
+				Id:        l.ID.String(),
+				Title:     l.Title,
+				FileLink:  l.FileLink,
+				Order:     int32(l.Order),
+				Completed: completedIDs[l.ID.String()],
 			})
 		}
 	}
