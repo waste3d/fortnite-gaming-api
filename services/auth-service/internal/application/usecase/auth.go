@@ -15,6 +15,7 @@ import (
 	userpb "auth-service/pkg/userpb/proto/user"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type AuthUseCase struct {
@@ -81,8 +82,15 @@ func (uc *AuthUseCase) Register(ctx context.Context, username, email, password s
 func (uc *AuthUseCase) Login(ctx context.Context, email, password, deviceID, deviceName string) (string, string, error) {
 	user, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		return "", "", errors.New("invalid credentials")
+		// Если ошибка "Запись не найдена" — значит правда неверный email
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", "", errors.New("invalid credentials")
+		}
+		// В любом другом случае — это внутренняя ошибка (БД упала), надо её логировать и вернуть как есть
+		log.Printf("Database error during login: %v", err)
+		return "", "", err
 	}
+
 	if err := uc.hasher.Compare(user.Password, password); err != nil {
 		return "", "", errors.New("invalid credentials")
 	}
