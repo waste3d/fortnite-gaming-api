@@ -26,6 +26,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("DB_NAME")
 	viper.BindEnv("GRPC_PORT")
 	viper.BindEnv("USER_SVC_URL")
+	viper.BindEnv("REDIS_ADDR")
 
 	err = viper.ReadInConfig()
 	if err != nil {
