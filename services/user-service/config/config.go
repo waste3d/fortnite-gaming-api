@@ -9,6 +9,7 @@ type Config struct {
 	DBPassword string `mapstructure:"DB_PASSWORD"`
 	DBName     string `mapstructure:"DB_NAME"`
 	GRPCPort   string `mapstructure:"GRPC_PORT"`
+	RedisAddr  string `mapstructure:"REDIS_ADDR"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -23,6 +24,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("DB_PASSWORD")
 	viper.BindEnv("DB_NAME")
 	viper.BindEnv("GRPC_PORT")
+	viper.BindEnv("REDIS_ADDR")
 
 	err = viper.ReadInConfig()
 	if err != nil {

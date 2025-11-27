@@ -9,6 +9,7 @@ type Config struct {
 	DBPassword string `mapstructure:"DB_PASSWORD"`
 	DBName     string `mapstructure:"DB_NAME"`
 	GRPCPort   string `mapstructure:"GRPC_PORT"`
+	RedisAddr  string `mapstructure:"REDIS_ADDR"`
 	UserSvcUrl string `mapstructure:"USER_SVC_URL"`
 }
 

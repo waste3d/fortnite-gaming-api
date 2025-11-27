@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/waste3d/gameplatform-api/services/course-service/config"
 	"github.com/waste3d/gameplatform-api/services/course-service/internal/domain"
 	"github.com/waste3d/gameplatform-api/services/course-service/internal/infrastructure/repository"
@@ -36,30 +37,11 @@ func main() {
 	// Миграции
 	db.AutoMigrate(&domain.Course{}, &domain.Lesson{})
 
-	// === SEED (Наполнение данными, если пусто) ===
-	var count int64
-	db.Model(&domain.Course{}).Count(&count)
-	if count == 0 {
-		repo := repository.NewCourseRepository(db)
-		// Пример 1
-		repo.Create(context.Background(), &domain.Course{
-			Title:       "Fullstack Python Разработчик",
-			Description: "Полный курс по разработке веб-приложений на Python + Django + Vue.js. От основ до деплоя.",
-			Category:    "Программирование",
-			Duration:    "45 часов",
-			CoverURL:    "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=800&q=80",
-			CloudLink:   "https://cloud.mail.ru/public/test/python",
-		})
-		// Пример 2
-		repo.Create(context.Background(), &domain.Course{
-			Title:       "UX/UI Дизайн с нуля",
-			Description: "Научитесь создавать удобные и красивые интерфейсы в Figma.",
-			Category:    "Дизайн",
-			Duration:    "20 часов",
-			CoverURL:    "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=800&q=80",
-			CloudLink:   "https://cloud.mail.ru/public/test/design",
-		})
-		log.Println(">>> DB Seeded with default courses")
+	rdb := redis.NewClient(&redis.Options{
+		Addr: cfg.RedisAddr,
+	})
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
+		log.Fatal("Failed to connect to Redis:", err)
 	}
 
 	// Подключение к User Service (для проверки прав)
@@ -70,7 +52,7 @@ func main() {
 	userClient := userpb.NewUserServiceClient(userConn)
 
 	// Запуск сервера
-	repo := repository.NewCourseRepository(db)
+	repo := repository.NewCourseRepository(db, rdb)
 	courseServer := grpc_server.NewCourseServer(repo, userClient)
 
 	lis, err := net.Listen("tcp", cfg.GRPCPort)

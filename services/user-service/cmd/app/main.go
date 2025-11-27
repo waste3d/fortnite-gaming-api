@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/waste3d/gameplatform-api/services/user-service/config"
 	"github.com/waste3d/gameplatform-api/services/user-service/internal/domain"
 	"github.com/waste3d/gameplatform-api/services/user-service/internal/infrastructure/repository"
@@ -36,6 +38,13 @@ func main() {
 	log.Println("Running migrations...")
 	if err := db.AutoMigrate(&domain.Profile{}, &domain.UserCourse{}, &domain.CompletedLesson{}); err != nil {
 		log.Fatalf("Failed to migrate DB: %v", err)
+	}
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr: cfg.RedisAddr,
+	})
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
+		log.Fatal("Failed to connect to Redis:", err)
 	}
 
 	// 4. Инициализация слоев
