@@ -72,10 +72,28 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 	if req.UserId != "" {
 		userRes, err := s.userClient.GetProfile(ctx, &userpb.GetProfileRequest{UserId: req.UserId})
 		if err == nil {
-			status := userRes.SubscriptionStatus
-			// Разрешаем админу, "Персональному" и "Профессиональному" (например)
-			if status == "admin" || status == "Персональный" || status == "Профессиональный" {
+			// 1. Глобальный доступ (Админ или Персональный/Безлимит)
+			// Если CourseLimit == -1, считаем это полным доступом
+			if userRes.SubscriptionStatus == "admin" {
 				hasAccess = true
+			} else {
+				// 2. Проверяем, есть ли этот курс в списке ActiveCourses у пользователя
+				// (Это значит, что он потратил на него слот)
+				for _, activeCourse := range userRes.ActiveCourses {
+					if activeCourse.Id == req.CourseId {
+						hasAccess = true
+						break
+					}
+				}
+				// Также проверяем завершенные
+				if !hasAccess {
+					for _, completedCourse := range userRes.CompletedCourses {
+						if completedCourse.Id == req.CourseId {
+							hasAccess = true
+							break
+						}
+					}
+				}
 			}
 		}
 	}
@@ -99,8 +117,7 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 	if hasAccess {
 		resp.Course.CloudLink = course.CloudLink
 
-		var completedIDs map[string]bool
-		completedIDs = make(map[string]bool)
+		completedIDs := make(map[string]bool)
 
 		if req.UserId != "" {
 			// Вызов нового метода GetCompletedLessons (Исправлена опечатка и тип запроса)

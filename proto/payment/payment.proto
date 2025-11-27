@@ -1,0 +1,35 @@
+syntax = "proto3";
+package payment;
+option go_package = "./pkg/paymentpb";
+
+service PaymentService {
+  // Для страницы "Тарифы"
+  rpc GetPlans (GetPlansRequest) returns (GetPlansResponse);
+  
+  // Для страницы "Активация промокода"
+  rpc RedeemPromo (RedeemPromoRequest) returns (RedeemPromoResponse);
+}
+
+message Plan {
+  string id = 1;
+  string name = 2;        // "Базовый", "PRO"
+  int32 price = 3;
+  string description = 4;
+}
+
+message GetPlansRequest {}
+message GetPlansResponse {
+  repeated Plan plans = 1;
+}
+
+message RedeemPromoRequest {
+  string user_id = 1;
+  string code = 2; // Например "FREE3DAY"
+}
+
+message RedeemPromoResponse {
+  bool success = 1;
+  string message = 2;    // "Подписка Базовый активирована"
+  string plan_name = 3;
+  int64 expires_at = 4;
+}

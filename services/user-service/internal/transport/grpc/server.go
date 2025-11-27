@@ -2,6 +2,7 @@ package grpc_server
 
 import (
 	"context"
+	"time"
 
 	"github.com/waste3d/gameplatform-api/services/user-service/internal/domain"
 	"github.com/waste3d/gameplatform-api/services/user-service/internal/infrastructure/repository"
@@ -93,26 +94,6 @@ func (s *UserServer) SetAvatar(ctx context.Context, req *userpb.SetAvatarRequest
 	}, nil
 }
 
-func (s *UserServer) StartCourse(ctx context.Context, req *userpb.StartCourseRequest) (*userpb.StartCourseResponse, error) {
-	uid, err := uuid.Parse(req.UserId)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid user id")
-	}
-
-	uc := &domain.UserCourse{
-		UserID:   uid,
-		CourseID: req.CourseId,
-		Title:    req.Title,
-		CoverURL: req.CoverUrl,
-	}
-
-	if err := s.repo.StartCourse(ctx, uc); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to start course: %v", err)
-	}
-
-	return &userpb.StartCourseResponse{Success: true}, nil
-}
-
 func (s *UserServer) UpdateProgress(ctx context.Context, req *userpb.UpdateProgressRequest) (*userpb.UpdateProgressResponse, error) {
 	uid, err := uuid.Parse(req.UserId)
 	if err != nil {
@@ -129,30 +110,18 @@ func (s *UserServer) UpdateProgress(ctx context.Context, req *userpb.UpdateProgr
 
 func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileRequest) (*userpb.GetProfileResponse, error) {
 	uid, _ := uuid.Parse(req.UserId)
-	profile, err := s.repo.GetByID(ctx, uid)
+	p, err := s.repo.GetByID(ctx, uid)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "profile not found")
+		return nil, err
 	}
 
-	// 1. Получаем курсы из репозитория
-	userCourses, err := s.repo.GetUserCourses(ctx, uid)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get user courses: %v", err)
-	}
+	usedCount, _ := s.repo.CountUserCourses(ctx, uid)
 
-	// Ошибку можно залогировать, но не прерывать запрос профиля
-
-	active := []*userpb.CoursePreview{}
-	completed := []*userpb.CoursePreview{}
-
-	// 2. Раскладываем по спискам
-	for _, c := range userCourses {
-		pb := &userpb.CoursePreview{
-			Id:              c.CourseID,
-			Title:           c.Title,
-			ProgressPercent: c.ProgressPercent,
-			CoverUrl:        c.CoverURL,
-		}
+	// Получаем списки курсов (как и раньше)
+	courses, _ := s.repo.GetUserCourses(ctx, uid)
+	var active, completed []*userpb.CoursePreview
+	for _, c := range courses {
+		pb := &userpb.CoursePreview{Id: c.CourseID, Title: c.Title, ProgressPercent: c.ProgressPercent, CoverUrl: c.CoverURL}
 		if c.Status == "completed" {
 			completed = append(completed, pb)
 		} else {
@@ -161,13 +130,21 @@ func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileReque
 	}
 
 	return &userpb.GetProfileResponse{
-		Id:                 profile.ID.String(),
-		Email:              profile.Email,
-		Username:           profile.Username,
-		AvatarId:           int32(profile.AvatarID),
-		SubscriptionStatus: profile.SubscriptionStatus,
-		ActiveCourses:      active,    // <-- Теперь тут данные
-		CompletedCourses:   completed, // <-- И тут
+		Id:       p.ID.String(),
+		Email:    p.Email,
+		Username: p.Username,
+		AvatarId: int32(p.AvatarID),
+
+		// Новые поля
+		SubscriptionStatus: p.SubscriptionStatus,
+		CourseLimit:        int32(p.CourseLimit),
+		CoursesUsed:        int32(usedCount),
+		DeviceLimit:        int32(p.DeviceLimit),
+		ExpiresAt:          p.SubscriptionEndsAt.Unix(),
+		TgAccess:           p.HasTgAccess,
+
+		ActiveCourses:    active,
+		CompletedCourses: completed,
 	}, nil
 }
 
@@ -217,4 +194,70 @@ func (s *UserServer) GetCompletedLessons(ctx context.Context, req *userpb.GetCom
 		return nil, status.Error(codes.Internal, "failed to get lessons")
 	}
 	return &userpb.GetCompletedLessonsResponse{LessonIds: ids}, nil
+}
+
+func (s *UserServer) SetSubscription(ctx context.Context, req *userpb.SetSubscriptionRequest) (*userpb.SetSubscriptionResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+	}
+
+	updates := map[string]interface{}{
+		"subscription_status":  req.PlanName,
+		"course_limit":         int(req.CourseLimit),
+		"device_limit":         int(req.DeviceLimit),
+		"has_tg_access":        req.TgAccess,
+		"subscription_ends_at": time.Unix(req.ExpiresAt, 0),
+	}
+
+	if err := s.repo.UpdateSubscription(ctx, uid, updates); err != nil {
+		return nil, status.Error(codes.Internal, "failed to update profile")
+	}
+
+	return &userpb.SetSubscriptionResponse{Success: true}, nil
+}
+
+func (s *UserServer) StartCourse(ctx context.Context, req *userpb.StartCourseRequest) (*userpb.StartCourseResponse, error) {
+	uid, _ := uuid.Parse(req.UserId)
+	profile, err := s.repo.GetByID(ctx, uid)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "profile not found")
+	}
+
+	// Логика доступа
+	if profile.SubscriptionStatus != "admin" {
+
+		// А. Проверка срока действия
+		if profile.SubscriptionStatus != "Обычный" && time.Now().After(profile.SubscriptionEndsAt) {
+			// Можно здесь автоматически откатывать на "Обычный", но пока вернем ошибку
+			return nil, status.Error(codes.PermissionDenied, "Ваша подписка истекла")
+		}
+
+		// Б. Если курс уже добавлен - ОК
+		has, _ := s.repo.UserHasCourse(ctx, uid, req.CourseId)
+		if has {
+			return &userpb.StartCourseResponse{Success: true}, nil
+		}
+
+		// В. Проверка лимитов (Слоты)
+		// Если CourseLimit == -1, это безлимит
+		if profile.CourseLimit != -1 {
+			used, _ := s.repo.CountUserCourses(ctx, uid)
+			if int(used) >= profile.CourseLimit {
+				return nil, status.Error(codes.ResourceExhausted, "Лимит курсов по вашему тарифу исчерпан")
+			}
+		}
+	}
+
+	// Все проверки пройдены, добавляем курс
+	uc := &domain.UserCourse{
+		UserID:   uid,
+		CourseID: req.CourseId,
+		Title:    req.Title,
+		CoverURL: req.CoverUrl,
+		Status:   "active",
+	}
+	_ = s.repo.StartCourse(ctx, uc)
+
+	return &userpb.StartCourseResponse{Success: true}, nil
 }

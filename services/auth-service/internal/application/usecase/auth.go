@@ -3,10 +3,10 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
-	"auth-service/config"
 	"auth-service/internal/domain"
 	"auth-service/internal/infrastructure/cache"
 	"auth-service/internal/infrastructure/email"
@@ -90,13 +90,23 @@ func (uc *AuthUseCase) Login(ctx context.Context, email, password, deviceID, dev
 	profile, err := uc.userClient.GetProfile(ctx, &userpb.GetProfileRequest{
 		UserId: user.ID.String(),
 	})
-
-	subStatus := "Обычный"
-	if err == nil {
-		subStatus = profile.SubscriptionStatus
+	if err != nil {
+		return "", "", errors.New("failed to get profile")
 	}
 
-	err = uc.checkDeviceLimit(ctx, user.ID, deviceID, deviceName, subStatus)
+	deviceLimit := int(profile.DeviceLimit)
+
+	// Если подписка истекла (и это не админ), сбрасываем лимит до 1
+	// (Хотя User Service при SetSubscription уже может это регулировать, но тут доп. защита)
+	if profile.SubscriptionStatus != "admin" && profile.SubscriptionStatus != "Обычный" {
+		// Если expires_at > 0 и текущее время > expires_at
+		if profile.ExpiresAt > 0 && time.Now().Unix() > profile.ExpiresAt {
+			deviceLimit = 1
+		}
+	}
+
+	// Передаем ЧИСЛО (limit), а не название статуса
+	err = uc.checkDeviceLimit(ctx, user.ID, deviceID, deviceName, deviceLimit)
 	if err != nil {
 		return "", "", err
 	}
@@ -246,25 +256,16 @@ func (uc *AuthUseCase) ConfirmEmailChange(ctx context.Context, token string) err
 }
 
 // Вспомогательная функция проверки
-func (uc *AuthUseCase) checkDeviceLimit(ctx context.Context, userID uuid.UUID, deviceID, deviceName, subStatus string) error {
+func (uc *AuthUseCase) checkDeviceLimit(ctx context.Context, userID uuid.UUID, deviceID, deviceName string, limit int) error {
 	// Проверяем, есть ли устройство
 	existingDevice, err := uc.deviceRepo.Find(ctx, userID, deviceID)
 
 	if err == nil {
-		// Устройство уже есть — просто обновляем дату
 		return uc.deviceRepo.UpdateLastActive(ctx, existingDevice.ID)
 	}
 
-	// Устройства нет. Проверяем лимит.
-	limit, ok := config.SubscriptionLimits[subStatus]
-	if !ok {
-		limit = 1 // Default
-	}
-
-	// Если admin или безлимит
-	if subStatus == "admin" {
-		limit = 10000
-	}
+	// Устройства нет. Проверяем переданный лимит.
+	// (Удалите чтение config.SubscriptionLimits отсюда!)
 
 	currentCount, err := uc.deviceRepo.Count(ctx, userID)
 	if err != nil {
@@ -272,7 +273,7 @@ func (uc *AuthUseCase) checkDeviceLimit(ctx context.Context, userID uuid.UUID, d
 	}
 
 	if currentCount >= int64(limit) {
-		return errors.New("device limit reached for your subscription")
+		return fmt.Errorf("device limit (%d) reached for your subscription", limit)
 	}
 
 	// Лимит не превышен — регистрируем

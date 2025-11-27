@@ -1,6 +1,5 @@
 module github.com/waste3d/gameplatform-api/services/user-service
 
-
 go 1.24.4
 
 require (

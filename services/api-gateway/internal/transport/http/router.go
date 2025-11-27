@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *middleware.RateLimiter, authClient *client.AuthClient, courseHandler *CourseHandler) *gin.Engine {
+func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *middleware.RateLimiter, authClient *client.AuthClient, courseHandler *CourseHandler, paymentHandler *PaymentHandler) *gin.Engine {
 	r := gin.Default()
 
 	config := cors.DefaultConfig()
@@ -51,6 +51,14 @@ func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *midd
 			course.POST("/:id/start", courseHandler.StartCourse)
 			course.POST("/:id/progress", courseHandler.UpdateProgress)
 			course.POST("/:id/lessons/:lessonId/complete", courseHandler.CompleteLesson)
+		}
+		payment := api.Group("/payment")
+		payment.Use(middleware.AuthMiddleware(authClient))
+		{
+			// Публичный метод: посмотреть цены можно без регистрации
+			payment.GET("/plans", paymentHandler.GetPlans)
+			// Приватный метод: активировать код может только залогиненный юзер
+			payment.POST("/redeem", middleware.AuthMiddleware(authClient), paymentHandler.Redeem)
 		}
 	}
 

@@ -19,6 +19,8 @@ service UserService {
 
   rpc CompleteLesson(CompleteLessonRequest) returns (CompleteLessonResponse);
   rpc GetCompletedLessons(GetCompletedLessonsRequest) returns (GetCompletedLessonsResponse);
+
+  rpc SetSubscription (SetSubscriptionRequest) returns (SetSubscriptionResponse);
 }
 
 message CreateProfileRequest {
@@ -46,10 +48,16 @@ message GetProfileResponse {
   string id = 1;
   string email = 2;
   string username = 3;
-  int32 avatar_id = 4;
-  string subscription_status = 5;
-  repeated CoursePreview active_courses = 6;
-  repeated CoursePreview completed_courses = 7;
+    // Данные о подписке для фронта
+    string subscription_status = 4; 
+    int32 course_limit = 5;
+    int32 courses_used = 6;
+    int32 device_limit = 7;
+    int64 expires_at = 8;
+    bool tg_access = 9;
+  int32 avatar_id = 10;
+  repeated CoursePreview active_courses = 11;
+  repeated CoursePreview completed_courses = 12;
 }
 
 message UpdateProfileRequest {
@@ -123,4 +131,17 @@ message GetCompletedLessonsRequest {
 
 message GetCompletedLessonsResponse {
   repeated string lesson_ids = 1;
+}
+
+message SetSubscriptionRequest {
+  string user_id = 1;
+  string plan_name = 2;    // Название тарифа для отображения
+  int32 course_limit = 3;  // Сколько курсов можно взять (-1 = много)
+  int32 device_limit = 4;  // Сколько устройств
+  bool tg_access = 5;      // Доступ к ТГ
+  int64 expires_at = 6;    // Когда истекает (Unix timestamp)
+}
+
+message SetSubscriptionResponse {
+  bool success = 1;
 }

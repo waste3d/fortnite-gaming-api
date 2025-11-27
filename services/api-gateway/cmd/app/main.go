@@ -50,12 +50,19 @@ func main() {
 	}
 	log.Println("Connected to Course Service at", cfg.CourseSvcUrl)
 
+	paymentClient, err := client.NewPaymentClient(cfg.PaymentSvcUrl)
+	if err != nil {
+		log.Fatalf("Failed to connect to Payment Service: %v", err)
+	}
+	log.Println("Connected to Payment Service at", cfg.PaymentSvcUrl)
+
 	// 3. Инициализация хендлеров
 	authHandler := handlers.NewAuthHandler(authClient)
 	userHandler := handlers.NewUserHandler(userClient, authClient)
 	courseHandler := handlers.NewCourseHandler(courseClient, userClient)
+	paymentHandler := handlers.NewPaymentHandler(paymentClient)
 	// 4. Роутер
-	router := handlers.NewRouter(authHandler, userHandler, rateLimiter, authClient, courseHandler)
+	router := handlers.NewRouter(authHandler, userHandler, rateLimiter, authClient, courseHandler, paymentHandler)
 
 	// 5. Запуск HTTP сервера
 	log.Printf("API Gateway running on port %s", cfg.Port)
