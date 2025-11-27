@@ -3,6 +3,7 @@ package grpc_server
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/waste3d/gameplatform-api/services/course-service/internal/domain"
 	"github.com/waste3d/gameplatform-api/services/course-service/internal/infrastructure/parser"
@@ -61,21 +62,31 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 		return nil, status.Error(codes.InvalidArgument, "invalid course id")
 	}
 
+	// Загружаем курс
 	course, err := s.repo.GetLessonsByID(ctx, uid)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "course not found")
 	}
 
-	// Изначально доступа нет
 	hasAccess := false
-	// Флаг, показывающий, что курс УЖЕ куплен/начат (чтобы показать уроки)
 	isStarted := false
 
+	// === ПРОВЕРКА ДОСТУПА ===
 	if req.UserId != "" {
 		userRes, err := s.userClient.GetProfile(ctx, &userpb.GetProfileRequest{UserId: req.UserId})
-		if err == nil {
-			// 1. Проверяем, начат ли курс (находится в активных или завершенных)
-			for _, activeCourse := range userRes.ActiveCourses {
+
+		if err != nil {
+			log.Printf("[CourseService ERROR] Failed to get user profile: %v", err)
+		} else {
+			statusSub := userRes.GetSubscriptionStatus()
+			expiresAt := userRes.GetExpiresAt()
+			activeCourses := userRes.GetActiveCourses()
+			completedCourses := userRes.GetCompletedCourses()
+
+			log.Printf("[CourseService DEBUG] User Status: '%s', Expires: %d", statusSub, expiresAt)
+
+			// 1. Проверяем, начат ли курс
+			for _, activeCourse := range activeCourses {
 				if activeCourse.Id == req.CourseId {
 					hasAccess = true
 					isStarted = true
@@ -83,7 +94,7 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 				}
 			}
 			if !isStarted {
-				for _, completedCourse := range userRes.CompletedCourses {
+				for _, completedCourse := range completedCourses {
 					if completedCourse.Id == req.CourseId {
 						hasAccess = true
 						isStarted = true
@@ -92,22 +103,23 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 				}
 			}
 
-			// 2. Если курс еще не начат, но у пользователя есть подписка - ДАЕМ ДОСТУП К СТРАНИЦЕ (HasAccess = true)
-			// Чтобы фронтенд показал кнопку "Начать обучение" вместо "Купить"
+			// 2. Если курс не начат, проверяем подписку
 			if !hasAccess {
-				if userRes.SubscriptionStatus == "admin" {
+				isAdmin := statusSub == "admin"
+				// Проверяем дату истечения (сравниваем Unix timestamp)
+				isSubscriptionActive := expiresAt > time.Now().Unix()
+
+				if isAdmin || isSubscriptionActive {
 					hasAccess = true
-					isStarted = true // Админ видит всё сразу
-				} else if userRes.SubscriptionStatus != "Обычный" && userRes.SubscriptionStatus != "" {
-					// Здесь можно добавить проверку ExpiresAt, если нужно
-					hasAccess = true
-					// isStarted оставляем false -> уроки не отдадутся, пока юзер не нажмет "Начать"
+					log.Printf("[CourseService DEBUG] Access GRANTED via subscription")
+				} else {
+					log.Printf("[CourseService DEBUG] Access DENIED. Admin: %v, Active: %v (Exp: %d vs Now: %d)",
+						isAdmin, isSubscriptionActive, expiresAt, time.Now().Unix())
 				}
 			}
 		}
 	}
 
-	// Формируем ответ
 	resp := &coursepb.GetCourseResponse{
 		Course: &coursepb.Course{
 			Id:          course.ID.String(),
@@ -122,7 +134,6 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 		Lessons:   []*coursepb.Lesson{},
 	}
 
-	// Отдаем уроки ТОЛЬКО если курс уже начат или юзер админ
 	if hasAccess && isStarted {
 		resp.Course.CloudLink = course.CloudLink
 
@@ -152,7 +163,6 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 
 	return resp, nil
 }
-
 func (s *CourseServer) CreateCourse(ctx context.Context, req *coursepb.CreateCourseRequest) (*coursepb.CreateCourseResponse, error) {
 	courseID := uuid.New()
 

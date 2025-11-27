@@ -28,6 +28,7 @@ const (
 	UserService_UpdateProgress_FullMethodName      = "/user.UserService/UpdateProgress"
 	UserService_CompleteLesson_FullMethodName      = "/user.UserService/CompleteLesson"
 	UserService_GetCompletedLessons_FullMethodName = "/user.UserService/GetCompletedLessons"
+	UserService_SetSubscription_FullMethodName     = "/user.UserService/SetSubscription"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -46,6 +47,7 @@ type UserServiceClient interface {
 	UpdateProgress(ctx context.Context, in *UpdateProgressRequest, opts ...grpc.CallOption) (*UpdateProgressResponse, error)
 	CompleteLesson(ctx context.Context, in *CompleteLessonRequest, opts ...grpc.CallOption) (*CompleteLessonResponse, error)
 	GetCompletedLessons(ctx context.Context, in *GetCompletedLessonsRequest, opts ...grpc.CallOption) (*GetCompletedLessonsResponse, error)
+	SetSubscription(ctx context.Context, in *SetSubscriptionRequest, opts ...grpc.CallOption) (*SetSubscriptionResponse, error)
 }
 
 type userServiceClient struct {
@@ -146,6 +148,16 @@ func (c *userServiceClient) GetCompletedLessons(ctx context.Context, in *GetComp
 	return out, nil
 }
 
+func (c *userServiceClient) SetSubscription(ctx context.Context, in *SetSubscriptionRequest, opts ...grpc.CallOption) (*SetSubscriptionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetSubscriptionResponse)
+	err := c.cc.Invoke(ctx, UserService_SetSubscription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -162,6 +174,7 @@ type UserServiceServer interface {
 	UpdateProgress(context.Context, *UpdateProgressRequest) (*UpdateProgressResponse, error)
 	CompleteLesson(context.Context, *CompleteLessonRequest) (*CompleteLessonResponse, error)
 	GetCompletedLessons(context.Context, *GetCompletedLessonsRequest) (*GetCompletedLessonsResponse, error)
+	SetSubscription(context.Context, *SetSubscriptionRequest) (*SetSubscriptionResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -198,6 +211,9 @@ func (UnimplementedUserServiceServer) CompleteLesson(context.Context, *CompleteL
 }
 func (UnimplementedUserServiceServer) GetCompletedLessons(context.Context, *GetCompletedLessonsRequest) (*GetCompletedLessonsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCompletedLessons not implemented")
+}
+func (UnimplementedUserServiceServer) SetSubscription(context.Context, *SetSubscriptionRequest) (*SetSubscriptionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetSubscription not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -382,6 +398,24 @@ func _UserService_GetCompletedLessons_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SetSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetSubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetSubscription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetSubscription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetSubscription(ctx, req.(*SetSubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -424,6 +458,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCompletedLessons",
 			Handler:    _UserService_GetCompletedLessons_Handler,
+		},
+		{
+			MethodName: "SetSubscription",
+			Handler:    _UserService_SetSubscription_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
