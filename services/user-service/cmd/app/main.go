@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// 4. Инициализация слоев
-	profileRepo := repository.NewProfileRepository(db)
+	profileRepo := repository.NewProfileRepository(db, rdb)
 	userServer := grpc_server.NewUserServer(profileRepo)
 
 	// 5. Запуск gRPC сервера
