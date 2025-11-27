@@ -3,6 +3,7 @@ package grpc_server
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"payment-service/internal/repository"
@@ -25,13 +26,16 @@ func NewPaymentServer(repo *repository.PaymentRepository, uc userpb.UserServiceC
 }
 
 func (s *PaymentServer) RedeemPromo(ctx context.Context, req *paymentpb.RedeemPromoRequest) (*paymentpb.RedeemPromoResponse, error) {
+	// Нормализуем код (все буквы большие), чтобы "Start3" и "START3" считались одним кодом
+	codeClean := strings.ToUpper(strings.TrimSpace(req.Code))
+
 	// 1. Ищем код в БД
-	promo, err := s.repo.GetPromoWithPlan(ctx, req.Code)
+	promo, err := s.repo.GetPromoWithPlan(ctx, codeClean)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "Промокод не найден")
 	}
 
-	// 2. Проверяем валидность
+	// 2. Проверяем валидность (сроки и лимиты)
 	if promo.ExpiresAt != nil && promo.ExpiresAt.Before(time.Now()) {
 		return nil, status.Error(codes.InvalidArgument, "Срок действия промокода истек")
 	}
@@ -39,17 +43,26 @@ func (s *PaymentServer) RedeemPromo(ctx context.Context, req *paymentpb.RedeemPr
 		return nil, status.Error(codes.ResourceExhausted, "Лимит использований этого кода исчерпан")
 	}
 
-	// 3. Вычисляем длительность
+	// === 3. НОВАЯ ПРОВЕРКА: Активировал ли юзер этот код раньше? ===
+	used, err := s.repo.IsPromoActivatedByUser(ctx, req.UserId, codeClean)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Ошибка проверки промокода")
+	}
+	if used {
+		return nil, status.Error(codes.AlreadyExists, "Вы уже активировали этот промокод")
+	}
+
+	// 4. Вычисляем длительность
 	plan := promo.Plan
 	duration := plan.DefaultDurationDays
 	if promo.OverrideDuration > 0 {
 		duration = promo.OverrideDuration
 	}
 
-	// 4. Считаем дату окончания
+	// 5. Считаем дату окончания
 	expiresAt := time.Now().Add(time.Duration(duration) * 24 * time.Hour)
 
-	// 5. Вызываем User Service для обновления профиля
+	// 6. Вызываем User Service
 	_, err = s.userClient.SetSubscription(ctx, &userpb.SetSubscriptionRequest{
 		UserId:      req.UserId,
 		PlanName:    plan.Name,
@@ -63,8 +76,11 @@ func (s *PaymentServer) RedeemPromo(ctx context.Context, req *paymentpb.RedeemPr
 		return nil, status.Errorf(codes.Internal, "Ошибка активации подписки: %v", err)
 	}
 
-	// 6. Фиксируем использование кода
+	// 7. Фиксируем использование кода
+	// а) Увеличиваем глобальный счетчик
 	_ = s.repo.IncrementUsage(ctx, promo.Code)
+	// б) Записываем, что ЭТОТ юзер активировал ЭТОТ код (чтобы не смог второй раз)
+	_ = s.repo.SaveActivation(ctx, req.UserId, codeClean)
 
 	return &paymentpb.RedeemPromoResponse{
 		Success:   true,
@@ -73,7 +89,6 @@ func (s *PaymentServer) RedeemPromo(ctx context.Context, req *paymentpb.RedeemPr
 		ExpiresAt: expiresAt.Unix(),
 	}, nil
 }
-
 func (s *PaymentServer) GetPlans(ctx context.Context, req *paymentpb.GetPlansRequest) (*paymentpb.GetPlansResponse, error) {
 	plans, _ := s.repo.GetAllPlans(ctx)
 	var pbPlans []*paymentpb.Plan

@@ -34,7 +34,7 @@ func main() {
 	}
 
 	// Миграция
-	db.AutoMigrate(&domain.Plan{}, &domain.PromoCode{})
+	db.AutoMigrate(&domain.Plan{}, &domain.PromoCode{}, &domain.PromoActivation{})
 
 	// Подключение к User Service
 	userConn, err := grpc.NewClient(cfg.UserSvcUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))

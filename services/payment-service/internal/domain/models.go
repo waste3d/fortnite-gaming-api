@@ -35,3 +35,9 @@ type PromoCode struct {
 	UsedCount        int        // Текущее использование
 	ExpiresAt        *time.Time // Дата сгорания кода (может быть null)
 }
+
+type PromoActivation struct {
+	UserID    string `gorm:"primaryKey;index"` // ID пользователя
+	Code      string `gorm:"primaryKey;index"` // Сам код (например "START3")
+	CreatedAt time.Time
+}

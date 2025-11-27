@@ -39,3 +39,20 @@ func (r *PaymentRepository) GetAllPlans(ctx context.Context) ([]domain.Plan, err
 	err := r.db.WithContext(ctx).Order("price asc").Find(&plans).Error
 	return plans, err
 }
+
+// Проверка: активировал ли этот юзер этот код ранее?
+func (r *PaymentRepository) IsPromoActivatedByUser(ctx context.Context, userID, code string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&domain.PromoActivation{}).
+		Where("user_id = ? AND code = ?", userID, code).
+		Count(&count).Error
+	return count > 0, err
+}
+
+// Записать факт активации
+func (r *PaymentRepository) SaveActivation(ctx context.Context, userID, code string) error {
+	return r.db.WithContext(ctx).Create(&domain.PromoActivation{
+		UserID: userID,
+		Code:   code,
+	}).Error
+}
