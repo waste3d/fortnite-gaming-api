@@ -8,7 +8,6 @@ import (
 	"auth-service/internal/domain"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -73,13 +72,9 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 }
 
 func (r *UserRepository) UpdatePassword(ctx context.Context, userID uuid.UUID, newPassword string) error {
-	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
 	return r.db.WithContext(ctx).Model(&UserGorm{}).
 		Where("id = ?", userID).
-		Update("password", hash).Error
+		Update("password", newPassword).Error
 }
 
 func (r *UserRepository) UpdateEmail(ctx context.Context, userID uuid.UUID, newEmail string) error {
