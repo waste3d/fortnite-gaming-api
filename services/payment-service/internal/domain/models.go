@@ -16,6 +16,9 @@ type Plan struct {
 	DeviceLimit         int  // 2, 4
 	IsTgAccess          bool // Доступ к закрытому ТГ
 	DefaultDurationDays int  // 30
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Промокод

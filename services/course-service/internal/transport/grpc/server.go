@@ -61,38 +61,47 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 		return nil, status.Error(codes.InvalidArgument, "invalid course id")
 	}
 
-	// Теперь этот метод вернет курс ВМЕСТЕ с уроками благодаря Preload
 	course, err := s.repo.GetLessonsByID(ctx, uid)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "course not found")
 	}
 
-	// === ПРОВЕРКА ДОСТУПА ===
+	// Изначально доступа нет
 	hasAccess := false
+	// Флаг, показывающий, что курс УЖЕ куплен/начат (чтобы показать уроки)
+	isStarted := false
+
 	if req.UserId != "" {
 		userRes, err := s.userClient.GetProfile(ctx, &userpb.GetProfileRequest{UserId: req.UserId})
 		if err == nil {
-			// 1. Глобальный доступ (Админ или Персональный/Безлимит)
-			// Если CourseLimit == -1, считаем это полным доступом
-			if userRes.SubscriptionStatus == "admin" {
-				hasAccess = true
-			} else {
-				// 2. Проверяем, есть ли этот курс в списке ActiveCourses у пользователя
-				// (Это значит, что он потратил на него слот)
-				for _, activeCourse := range userRes.ActiveCourses {
-					if activeCourse.Id == req.CourseId {
+			// 1. Проверяем, начат ли курс (находится в активных или завершенных)
+			for _, activeCourse := range userRes.ActiveCourses {
+				if activeCourse.Id == req.CourseId {
+					hasAccess = true
+					isStarted = true
+					break
+				}
+			}
+			if !isStarted {
+				for _, completedCourse := range userRes.CompletedCourses {
+					if completedCourse.Id == req.CourseId {
 						hasAccess = true
+						isStarted = true
 						break
 					}
 				}
-				// Также проверяем завершенные
-				if !hasAccess {
-					for _, completedCourse := range userRes.CompletedCourses {
-						if completedCourse.Id == req.CourseId {
-							hasAccess = true
-							break
-						}
-					}
+			}
+
+			// 2. Если курс еще не начат, но у пользователя есть подписка - ДАЕМ ДОСТУП К СТРАНИЦЕ (HasAccess = true)
+			// Чтобы фронтенд показал кнопку "Начать обучение" вместо "Купить"
+			if !hasAccess {
+				if userRes.SubscriptionStatus == "admin" {
+					hasAccess = true
+					isStarted = true // Админ видит всё сразу
+				} else if userRes.SubscriptionStatus != "Обычный" && userRes.SubscriptionStatus != "" {
+					// Здесь можно добавить проверку ExpiresAt, если нужно
+					hasAccess = true
+					// isStarted оставляем false -> уроки не отдадутся, пока юзер не нажмет "Начать"
 				}
 			}
 		}
@@ -107,20 +116,18 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 			Category:    course.Category,
 			Duration:    course.Duration,
 			CoverUrl:    course.CoverURL,
-			CloudLink:   "", // Прячем общую ссылку, если хотим заставить кликать по урокам
+			CloudLink:   "",
 		},
 		HasAccess: hasAccess,
-		Lessons:   []*coursepb.Lesson{}, // Инициализируем пустым
+		Lessons:   []*coursepb.Lesson{},
 	}
 
-	// Если есть доступ — отдаем ссылку и уроки
-	if hasAccess {
+	// Отдаем уроки ТОЛЬКО если курс уже начат или юзер админ
+	if hasAccess && isStarted {
 		resp.Course.CloudLink = course.CloudLink
 
 		completedIDs := make(map[string]bool)
-
 		if req.UserId != "" {
-			// Вызов нового метода GetCompletedLessons (Исправлена опечатка и тип запроса)
 			res, err := s.userClient.GetCompletedLessons(ctx, &userpb.GetCompletedLessonsRequest{
 				UserId:   req.UserId,
 				CourseId: course.ID.String(),
@@ -132,7 +139,6 @@ func (s *CourseServer) GetCourse(ctx context.Context, req *coursepb.GetCourseReq
 			}
 		}
 
-		// Конвертируем доменные уроки в protobuf
 		for _, l := range course.Lessons {
 			resp.Lessons = append(resp.Lessons, &coursepb.Lesson{
 				Id:        l.ID.String(),
