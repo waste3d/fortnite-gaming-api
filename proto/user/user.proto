@@ -58,6 +58,9 @@ message GetProfileResponse {
   int32 avatar_id = 10;
   repeated CoursePreview active_courses = 11;
   repeated CoursePreview completed_courses = 12;
+
+  int32 streak = 13;               // Текущая серия дней (например, 5)
+  bool is_streak_active_today = 14; // true = огонек горит (уже позанимался сегодня), false = серый (позанимался вчера)
 }
 
 message UpdateProfileRequest {

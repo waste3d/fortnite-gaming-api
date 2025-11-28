@@ -186,3 +186,39 @@ func (r *ProfileRepository) UserHasCourse(ctx context.Context, userID uuid.UUID,
 	err := r.db.WithContext(ctx).Model(&domain.UserCourse{}).Where("user_id = ? AND course_id = ?", userID, courseID).Count(&count).Error
 	return count > 0, err
 }
+
+func truncateToDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+}
+
+func (r *ProfileRepository) CheckAndIncrementStreak(ctx context.Context, userID uuid.UUID) error {
+	var profile domain.Profile
+	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&profile).Error; err != nil {
+		return err
+	}
+
+	now := time.Now().UTC()
+	today := truncateToDay(now)
+	lastActivity := truncateToDay(profile.LastStreakAt.UTC())
+
+	daysDiff := int(today.Sub(lastActivity).Hours() / 24)
+
+	updates := make(map[string]interface{})
+
+	if daysDiff == 0 {
+		return nil
+	} else if daysDiff == 1 {
+		updates["streak"] = profile.Streak + 1
+		updates["last_streak_at"] = now
+	} else {
+		updates["streak"] = 1
+		updates["last_streak_at"] = now
+	}
+
+	if err := r.db.WithContext(ctx).Model(&profile).Updates(updates).Error; err != nil {
+		return err
+	}
+
+	r.invalidateCache(ctx, userID.String())
+	return nil
+}

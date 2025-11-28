@@ -129,6 +129,22 @@ func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileReque
 		}
 	}
 
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	lastActivity := time.Date(p.LastStreakAt.Year(), p.LastStreakAt.Month(), p.LastStreakAt.Day(), 0, 0, 0, 0, p.LastStreakAt.Location())
+
+	daysDiff := int(today.Sub(lastActivity).Hours() / 24)
+
+	displayStreak := int32(p.Streak)
+	isActiveToday := false
+
+	if daysDiff == 0 {
+		isActiveToday = true
+	} else if daysDiff > 1 {
+		// Если пользователь зашел, но еще не прошел урок, а последний раз был давно -> показываем 0
+		displayStreak = 0
+	}
+
 	return &userpb.GetProfileResponse{
 		Id:       p.ID.String(),
 		Email:    p.Email,
@@ -145,6 +161,9 @@ func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileReque
 
 		ActiveCourses:    active,
 		CompletedCourses: completed,
+
+		Streak:              displayStreak,
+		IsStreakActiveToday: isActiveToday,
 	}, nil
 }
 
@@ -179,6 +198,10 @@ func (s *UserServer) CompleteLesson(ctx context.Context, req *userpb.CompleteLes
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to update progress")
 	}
+
+	go func() {
+		_ = s.repo.CheckAndIncrementStreak(context.Background(), uid)
+	}()
 
 	return &userpb.CompleteLessonResponse{
 		Success:    true,
