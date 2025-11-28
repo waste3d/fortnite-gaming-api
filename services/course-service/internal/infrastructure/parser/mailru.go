@@ -122,7 +122,7 @@ func fetchFolderRecursive(weblink string) ([]LessonDTO, error) {
 
 		// Игнорируем архивные файлы, текстовые и pdf (если нужны только видео)
 		lowerName := strings.ToLower(item.Name)
-		if strings.HasSuffix(lowerName, ".url") {
+		if strings.HasSuffix(lowerName, ".url") || strings.HasSuffix(lowerName, ".docx") {
 			isTargetFile = false
 		}
 
