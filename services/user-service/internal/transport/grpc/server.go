@@ -2,6 +2,7 @@ package grpc_server
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/waste3d/gameplatform-api/services/user-service/internal/domain"
@@ -180,6 +181,10 @@ func (s *UserServer) CompleteLesson(ctx context.Context, req *userpb.CompleteLes
 		return nil, status.Error(codes.Internal, "failed to save lesson")
 	}
 
+	if err := s.repo.CheckAndIncrementStreak(ctx, uid); err != nil {
+		fmt.Printf("Error updating streak: %v\n", err)
+	}
+
 	// 2. Считаем, сколько всего пройдено
 	completedCount, _ := s.repo.CountCompletedLessons(ctx, uid, req.CourseId)
 
@@ -198,10 +203,6 @@ func (s *UserServer) CompleteLesson(ctx context.Context, req *userpb.CompleteLes
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to update progress")
 	}
-
-	go func() {
-		_ = s.repo.CheckAndIncrementStreak(context.Background(), uid)
-	}()
 
 	return &userpb.CompleteLessonResponse{
 		Success:    true,
