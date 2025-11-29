@@ -118,7 +118,6 @@ func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileReque
 
 	usedCount, _ := s.repo.CountUserCourses(ctx, uid)
 
-	// Получаем списки курсов (как и раньше)
 	courses, _ := s.repo.GetUserCourses(ctx, uid)
 	var active, completed []*userpb.CoursePreview
 	for _, c := range courses {
@@ -133,50 +132,50 @@ func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileReque
 	now := time.Now().UTC()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	lastActivity := time.Date(p.LastStreakAt.Year(), p.LastStreakAt.Month(), p.LastStreakAt.Day(), 0, 0, 0, 0, p.LastStreakAt.Location())
-
 	daysDiff := int(today.Sub(lastActivity).Hours() / 24)
-
 	displayStreak := int32(p.Streak)
 	isActiveToday := false
-
 	if daysDiff == 0 {
 		isActiveToday = true
 	} else if daysDiff > 1 {
-		// Если пользователь зашел, но еще не прошел урок, а последний раз был давно -> показываем 0
 		displayStreak = 0
 	}
 
 	var unlockedIDs []int32
-	// Базовые аватарки (1-5) доступны всем
-	for i := 1; i <= 5; i++ {
-		unlockedIDs = append(unlockedIDs, int32(i))
+
+	// =====> НОВАЯ ЛОГИКА ДЛЯ АДМИНА <=====
+	if p.SubscriptionStatus == "admin" {
+		// Если пользователь админ, открываем ему все 19 аватарок
+		for i := 1; i <= 19; i++ {
+			unlockedIDs = append(unlockedIDs, int32(i))
+		}
+	} else {
+		// Для обычных пользователей оставляем старую логику
+		for _, ua := range p.UnlockedAvatars {
+			unlockedIDs = append(unlockedIDs, int32(ua.AvatarID))
+		}
 	}
-	for _, ua := range p.UnlockedAvatars {
-		unlockedIDs = append(unlockedIDs, int32(ua.AvatarID))
-	}
+	// ===================================
 
 	rank, err := s.repo.GetUserRank(ctx, uid)
 	if err != nil {
 		fmt.Printf("Error getting user rank: %v\n", err)
+		rank = 0 // Безопасное значение по умолчанию
 	}
 
 	return &userpb.GetProfileResponse{
-		Id:       p.ID.String(),
-		Email:    p.Email,
-		Username: p.Username,
-		AvatarId: int32(p.AvatarID),
-
-		// Новые поля
-		SubscriptionStatus: p.SubscriptionStatus,
-		CourseLimit:        int32(p.CourseLimit),
-		CoursesUsed:        int32(usedCount),
-		DeviceLimit:        int32(p.DeviceLimit),
-		ExpiresAt:          p.SubscriptionEndsAt.Unix(),
-		TgAccess:           p.HasTgAccess,
-
-		ActiveCourses:    active,
-		CompletedCourses: completed,
-
+		Id:                  p.ID.String(),
+		Email:               p.Email,
+		Username:            p.Username,
+		AvatarId:            int32(p.AvatarID),
+		SubscriptionStatus:  p.SubscriptionStatus,
+		CourseLimit:         int32(p.CourseLimit),
+		CoursesUsed:         int32(usedCount),
+		DeviceLimit:         int32(p.DeviceLimit),
+		ExpiresAt:           p.SubscriptionEndsAt.Unix(),
+		TgAccess:            p.HasTgAccess,
+		ActiveCourses:       active,
+		CompletedCourses:    completed,
 		Streak:              displayStreak,
 		IsStreakActiveToday: isActiveToday,
 		Balance:             int32(p.Balance),
