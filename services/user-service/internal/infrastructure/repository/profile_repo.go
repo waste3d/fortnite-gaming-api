@@ -319,7 +319,7 @@ func (r *ProfileRepository) GetUserCourseStatus(ctx context.Context, userID uuid
 func (r *ProfileRepository) GetUserRank(ctx context.Context, userID uuid.UUID) (int64, error) {
 	var rank int64
 
-	subQuery := r.db.WithContext(ctx).Model(&domain.Profile{}).Select("id, ROW_NUMBER() over (order by streak, completed_count desc, balance desc) as rank")
+	subQuery := r.db.WithContext(ctx).Model(&domain.Profile{}).Select("id, ROW_NUMBER() over (order by streak desc, completed_count desc, balance desc) as rank")
 
 	err := r.db.WithContext(ctx).
 		Table("(?) as ranked_users", subQuery).
