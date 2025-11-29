@@ -203,15 +203,19 @@ func (s *UserServer) CompleteLesson(ctx context.Context, req *userpb.CompleteLes
 	// 2. Начисляем награды ТОЛЬКО за новые уроки (защита от фарма)
 	if created {
 		// Обновляем стрик
-		if err := s.repo.CheckAndIncrementStreak(ctx, uid); err != nil {
+
+		streakUpdated, err := s.repo.CheckAndIncrementStreak(ctx, uid)
+		if err != nil {
 			fmt.Printf("Error updating streak: %v\n", err)
 		}
 
-		// Начисляем +10 снежинок за урок
-		if newBalance, err := s.repo.ChangeBalance(ctx, uid, 10); err != nil {
-			fmt.Printf("Error changing balance: %v\n", err)
-		} else {
-			fmt.Printf("User %s earned coins. New balance: %d\n", uid, newBalance)
+		// Начисляем +10 снежинок ТОЛЬКО если стрик был обновлен (первый урок за день)
+		if streakUpdated {
+			if newBalance, err := s.repo.ChangeBalance(ctx, uid, 10); err != nil {
+				fmt.Printf("Error changing balance: %v\n", err)
+			} else {
+				fmt.Printf("User %s earned daily bonus. New balance: %d\n", uid, newBalance)
+			}
 		}
 	}
 

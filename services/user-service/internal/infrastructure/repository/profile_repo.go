@@ -197,10 +197,10 @@ func truncateToDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
-func (r *ProfileRepository) CheckAndIncrementStreak(ctx context.Context, userID uuid.UUID) error {
+func (r *ProfileRepository) CheckAndIncrementStreak(ctx context.Context, userID uuid.UUID) (bool, error) {
 	var profile domain.Profile
 	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&profile).Error; err != nil {
-		return err
+		return false, err
 	}
 
 	now := time.Now().UTC()
@@ -212,21 +212,25 @@ func (r *ProfileRepository) CheckAndIncrementStreak(ctx context.Context, userID 
 	updates := make(map[string]interface{})
 
 	if daysDiff == 0 {
-		return nil
+		// Активность сегодня уже была, стрик не обновляем.
+		return false, nil
 	} else if daysDiff == 1 {
+		// Продолжаем стрик
 		updates["streak"] = profile.Streak + 1
 		updates["last_streak_at"] = now
 	} else {
+		// Сбрасываем стрик до 1
 		updates["streak"] = 1
 		updates["last_streak_at"] = now
 	}
 
 	if err := r.db.WithContext(ctx).Model(&profile).Updates(updates).Error; err != nil {
-		return err
+		return false, err
 	}
 
 	r.invalidateCache(ctx, userID.String())
-	return nil
+	// Возвращаем true, потому что стрик был обновлен
+	return true, nil
 }
 
 func (r *ProfileRepository) AddCourseSlots(ctx context.Context, userID uuid.UUID, count int) error {
