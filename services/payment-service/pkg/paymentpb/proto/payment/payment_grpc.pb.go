@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	PaymentService_GetPlans_FullMethodName    = "/payment.PaymentService/GetPlans"
 	PaymentService_RedeemPromo_FullMethodName = "/payment.PaymentService/RedeemPromo"
+	PaymentService_SpinWheel_FullMethodName   = "/payment.PaymentService/SpinWheel"
 )
 
 // PaymentServiceClient is the client API for PaymentService service.
@@ -31,6 +32,7 @@ type PaymentServiceClient interface {
 	GetPlans(ctx context.Context, in *GetPlansRequest, opts ...grpc.CallOption) (*GetPlansResponse, error)
 	// Для страницы "Активация промокода"
 	RedeemPromo(ctx context.Context, in *RedeemPromoRequest, opts ...grpc.CallOption) (*RedeemPromoResponse, error)
+	SpinWheel(ctx context.Context, in *SpinWheelRequest, opts ...grpc.CallOption) (*SpinWheelResponse, error)
 }
 
 type paymentServiceClient struct {
@@ -61,6 +63,16 @@ func (c *paymentServiceClient) RedeemPromo(ctx context.Context, in *RedeemPromoR
 	return out, nil
 }
 
+func (c *paymentServiceClient) SpinWheel(ctx context.Context, in *SpinWheelRequest, opts ...grpc.CallOption) (*SpinWheelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SpinWheelResponse)
+	err := c.cc.Invoke(ctx, PaymentService_SpinWheel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PaymentServiceServer is the server API for PaymentService service.
 // All implementations must embed UnimplementedPaymentServiceServer
 // for forward compatibility.
@@ -69,6 +81,7 @@ type PaymentServiceServer interface {
 	GetPlans(context.Context, *GetPlansRequest) (*GetPlansResponse, error)
 	// Для страницы "Активация промокода"
 	RedeemPromo(context.Context, *RedeemPromoRequest) (*RedeemPromoResponse, error)
+	SpinWheel(context.Context, *SpinWheelRequest) (*SpinWheelResponse, error)
 	mustEmbedUnimplementedPaymentServiceServer()
 }
 
@@ -84,6 +97,9 @@ func (UnimplementedPaymentServiceServer) GetPlans(context.Context, *GetPlansRequ
 }
 func (UnimplementedPaymentServiceServer) RedeemPromo(context.Context, *RedeemPromoRequest) (*RedeemPromoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RedeemPromo not implemented")
+}
+func (UnimplementedPaymentServiceServer) SpinWheel(context.Context, *SpinWheelRequest) (*SpinWheelResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SpinWheel not implemented")
 }
 func (UnimplementedPaymentServiceServer) mustEmbedUnimplementedPaymentServiceServer() {}
 func (UnimplementedPaymentServiceServer) testEmbeddedByValue()                        {}
@@ -142,6 +158,24 @@ func _PaymentService_RedeemPromo_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PaymentService_SpinWheel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SpinWheelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PaymentServiceServer).SpinWheel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PaymentService_SpinWheel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PaymentServiceServer).SpinWheel(ctx, req.(*SpinWheelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PaymentService_ServiceDesc is the grpc.ServiceDesc for PaymentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -156,6 +190,10 @@ var PaymentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RedeemPromo",
 			Handler:    _PaymentService_RedeemPromo_Handler,
+		},
+		{
+			MethodName: "SpinWheel",
+			Handler:    _PaymentService_SpinWheel_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

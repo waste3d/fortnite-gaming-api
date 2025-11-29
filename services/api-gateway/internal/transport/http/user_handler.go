@@ -119,3 +119,12 @@ func (h *UserHandler) ConfirmEmailChange(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Email updated successfully"})
 }
+
+func (h *UserHandler) GetLeaderboard(c *gin.Context) {
+	res, err := h.userClient.Client.GetLeaderboard(c, &userpb.GetLeaderboardRequest{Limit: 10})
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, res.Entries)
+}

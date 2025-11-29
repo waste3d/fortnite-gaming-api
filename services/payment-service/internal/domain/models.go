@@ -29,6 +29,10 @@ type PromoCode struct {
 	PlanID uuid.UUID `gorm:"type:uuid"`
 	Plan   Plan      `gorm:"foreignKey:PlanID"`
 
+	Type string
+	// Если ONE_COURSE, тут кол-во слотов. Если SUBSCRIPTION - PlanID
+	ValueInt int
+
 	// Условия
 	OverrideDuration int        // Если > 0, заменяет стандартную длительность (например, 3 дня)
 	MaxUses          int        // Сколько раз можно использовать всего

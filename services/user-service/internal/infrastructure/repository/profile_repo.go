@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/waste3d/gameplatform-api/services/user-service/internal/domain"
@@ -41,7 +42,7 @@ func (r *ProfileRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.
 
 	// 2. Если нет в кеше - берем из БД
 	var profile domain.Profile
-	err = r.db.WithContext(ctx).Where("id = ?", id).First(&profile).Error
+	err = r.db.WithContext(ctx).Preload("UnlockedAvatars").Where("id = ?", id).First(&profile).Error
 	if err != nil {
 		return nil, err
 	}
@@ -221,4 +222,76 @@ func (r *ProfileRepository) CheckAndIncrementStreak(ctx context.Context, userID 
 
 	r.invalidateCache(ctx, userID.String())
 	return nil
+}
+
+func (r *ProfileRepository) AddCourseSlots(ctx context.Context, userID uuid.UUID, count int) error {
+	err := r.db.WithContext(ctx).Model(&domain.Profile{}).
+		Where("id = ?", userID).
+		Update("course_limit", gorm.Expr("course_limit + ?", count)).Error
+	if err == nil {
+		r.invalidateCache(ctx, userID.String())
+	}
+	return err
+}
+
+func (r *ProfileRepository) ChangeBalance(ctx context.Context, userID uuid.UUID, amount int) (int, error) {
+	var newBalance int
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var p domain.Profile
+		if err := tx.Select("balance").Where("id = ?", userID).First(&p).Error; err != nil {
+			return err
+		}
+
+		if p.Balance+amount < 0 {
+			return fmt.Errorf("insufficient funds")
+		}
+
+		p.Balance += amount
+		newBalance = p.Balance
+
+		return tx.Model(&domain.Profile{}).Where("id = ?", userID).Update("balance", p.Balance).Error
+	})
+
+	if err == nil {
+		r.invalidateCache(ctx, userID.String())
+	}
+	return newBalance, err
+}
+
+func (r *ProfileRepository) AddUnlockedAvatar(ctx context.Context, userID uuid.UUID, avatarID int) (bool, error) {
+	// Проверяем, есть ли уже
+	var count int64
+	r.db.WithContext(ctx).Model(&domain.UnlockedAvatar{}).
+		Where("user_id = ? AND avatar_id = ?", userID, avatarID).
+		Count(&count)
+
+	if count > 0 {
+		return true, nil // Уже есть
+	}
+
+	err := r.db.WithContext(ctx).Create(&domain.UnlockedAvatar{
+		UserID:   userID,
+		AvatarID: avatarID,
+	}).Error
+
+	if err == nil {
+		r.invalidateCache(ctx, userID.String())
+	}
+	return false, err
+}
+
+func (r *ProfileRepository) GetLeaderboard(ctx context.Context, limit int) ([]domain.Profile, error) {
+	var users []domain.Profile
+	// Сортируем по стрику и кол-ву пройденных курсов
+	err := r.db.WithContext(ctx).
+		Order("streak desc, completed_count desc").
+		Limit(limit).
+		Find(&users).Error
+	return users, err
+}
+
+func (r *ProfileRepository) IncrementCompletedCount(ctx context.Context, userID uuid.UUID) {
+	r.db.WithContext(ctx).Model(&domain.Profile{}).
+		Where("id = ?", userID).
+		Update("completed_count", gorm.Expr("completed_count + 1"))
 }

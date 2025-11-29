@@ -40,6 +40,7 @@ func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *midd
 			user.POST("/email/change", userHandler.RequestEmailChange)
 			user.GET("/devices", authHandler.GetDevices)
 			user.DELETE("/devices/:id", authHandler.RemoveDevice)
+			user.GET("/leaderboard", userHandler.GetLeaderboard)
 		}
 		course := api.Group("/courses")
 		course.Use(middleware.AuthMiddleware(authClient))
@@ -59,6 +60,7 @@ func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *midd
 			payment.GET("/plans", paymentHandler.GetPlans)
 			// Приватный метод: активировать код может только залогиненный юзер
 			payment.POST("/redeem", middleware.AuthMiddleware(authClient), paymentHandler.Redeem)
+			payment.POST("/spin", middleware.AuthMiddleware(authClient), paymentHandler.SpinWheel)
 		}
 	}
 

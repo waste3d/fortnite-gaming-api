@@ -21,6 +21,17 @@ service UserService {
   rpc GetCompletedLessons(GetCompletedLessonsRequest) returns (GetCompletedLessonsResponse);
 
   rpc SetSubscription (SetSubscriptionRequest) returns (SetSubscriptionResponse);
+
+  rpc AddCourseLimit(AddCourseLimitRequest) returns (AddCourseLimitResponse);
+  
+  // Изменить баланс (начислить или списать снежинки)
+  rpc ChangeBalance(ChangeBalanceRequest) returns (ChangeBalanceResponse);
+  
+  // Разблокировать аватарку (выпала в колесе)
+  rpc UnlockAvatar(UnlockAvatarRequest) returns (UnlockAvatarResponse);
+  
+  // Получить топ студентов
+  rpc GetLeaderboard(GetLeaderboardRequest) returns (GetLeaderboardResponse);
 }
 
 message CreateProfileRequest {
@@ -58,9 +69,13 @@ message GetProfileResponse {
   int32 avatar_id = 10;
   repeated CoursePreview active_courses = 11;
   repeated CoursePreview completed_courses = 12;
+  
 
   int32 streak = 13;               // Текущая серия дней (например, 5)
   bool is_streak_active_today = 14; // true = огонек горит (уже позанимался сегодня), false = серый (позанимался вчера)
+
+  int32 balance = 15; // Снежинки
+  repeated int32 unlocked_avatar_ids = 16; // Список ID доступных аватарок
 }
 
 message UpdateProfileRequest {
@@ -147,4 +162,44 @@ message SetSubscriptionRequest {
 
 message SetSubscriptionResponse {
   bool success = 1;
+}
+message AddCourseLimitRequest {
+  string user_id = 1;
+  int32 count = 2;
+}
+message AddCourseLimitResponse {
+  bool success = 1;
+  int32 new_limit = 2;
+}
+message ChangeBalanceRequest {
+  string user_id = 1;
+  int32 amount = 2; // Положительное = начислить, Отрицательное = списать
+}
+message ChangeBalanceResponse {
+  bool success = 1;
+  int32 new_balance = 2;
+}
+
+message UnlockAvatarRequest {
+  string user_id = 1;
+  int32 avatar_id = 2;
+}
+message UnlockAvatarResponse {
+  bool success = 1;
+  bool already_owned = 2;
+}
+
+message GetLeaderboardRequest {
+  int32 limit = 1;
+}
+message LeaderboardEntry {
+  string user_id = 1;
+  string username = 2;
+  int32 avatar_id = 3;
+  int32 streak = 4;
+  int32 completed_count = 5;
+  int32 balance = 6;
+}
+message GetLeaderboardResponse {
+  repeated LeaderboardEntry entries = 1;
 }

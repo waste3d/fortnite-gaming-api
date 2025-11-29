@@ -8,6 +8,8 @@ service PaymentService {
   
   // Для страницы "Активация промокода"
   rpc RedeemPromo (RedeemPromoRequest) returns (RedeemPromoResponse);
+
+  rpc SpinWheel(SpinWheelRequest) returns (SpinWheelResponse);
 }
 
 message Plan {
@@ -32,4 +34,15 @@ message RedeemPromoResponse {
   string message = 2;    // "Подписка Базовый активирована"
   string plan_name = 3;
   int64 expires_at = 4;
+}
+
+message SpinWheelRequest {
+  string user_id = 1;
+}
+
+message SpinWheelResponse {
+  string prize_type = 1; // "BALANCE", "SLOT", "AVATAR", "EMPTY"
+  int32 prize_value = 2; // Например: 50 (снежинок) или 1 (слот) или ID аватарки
+  string message = 3;    // Текст выигрыша для фронта
+  int32 remaining_balance = 4;
 }

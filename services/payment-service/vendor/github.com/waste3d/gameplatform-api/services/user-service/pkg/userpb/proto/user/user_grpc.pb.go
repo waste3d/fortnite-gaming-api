@@ -29,6 +29,10 @@ const (
 	UserService_CompleteLesson_FullMethodName      = "/user.UserService/CompleteLesson"
 	UserService_GetCompletedLessons_FullMethodName = "/user.UserService/GetCompletedLessons"
 	UserService_SetSubscription_FullMethodName     = "/user.UserService/SetSubscription"
+	UserService_AddCourseLimit_FullMethodName      = "/user.UserService/AddCourseLimit"
+	UserService_ChangeBalance_FullMethodName       = "/user.UserService/ChangeBalance"
+	UserService_UnlockAvatar_FullMethodName        = "/user.UserService/UnlockAvatar"
+	UserService_GetLeaderboard_FullMethodName      = "/user.UserService/GetLeaderboard"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -48,6 +52,13 @@ type UserServiceClient interface {
 	CompleteLesson(ctx context.Context, in *CompleteLessonRequest, opts ...grpc.CallOption) (*CompleteLessonResponse, error)
 	GetCompletedLessons(ctx context.Context, in *GetCompletedLessonsRequest, opts ...grpc.CallOption) (*GetCompletedLessonsResponse, error)
 	SetSubscription(ctx context.Context, in *SetSubscriptionRequest, opts ...grpc.CallOption) (*SetSubscriptionResponse, error)
+	AddCourseLimit(ctx context.Context, in *AddCourseLimitRequest, opts ...grpc.CallOption) (*AddCourseLimitResponse, error)
+	// Изменить баланс (начислить или списать снежинки)
+	ChangeBalance(ctx context.Context, in *ChangeBalanceRequest, opts ...grpc.CallOption) (*ChangeBalanceResponse, error)
+	// Разблокировать аватарку (выпала в колесе)
+	UnlockAvatar(ctx context.Context, in *UnlockAvatarRequest, opts ...grpc.CallOption) (*UnlockAvatarResponse, error)
+	// Получить топ студентов
+	GetLeaderboard(ctx context.Context, in *GetLeaderboardRequest, opts ...grpc.CallOption) (*GetLeaderboardResponse, error)
 }
 
 type userServiceClient struct {
@@ -158,6 +169,46 @@ func (c *userServiceClient) SetSubscription(ctx context.Context, in *SetSubscrip
 	return out, nil
 }
 
+func (c *userServiceClient) AddCourseLimit(ctx context.Context, in *AddCourseLimitRequest, opts ...grpc.CallOption) (*AddCourseLimitResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddCourseLimitResponse)
+	err := c.cc.Invoke(ctx, UserService_AddCourseLimit_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ChangeBalance(ctx context.Context, in *ChangeBalanceRequest, opts ...grpc.CallOption) (*ChangeBalanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangeBalanceResponse)
+	err := c.cc.Invoke(ctx, UserService_ChangeBalance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UnlockAvatar(ctx context.Context, in *UnlockAvatarRequest, opts ...grpc.CallOption) (*UnlockAvatarResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnlockAvatarResponse)
+	err := c.cc.Invoke(ctx, UserService_UnlockAvatar_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetLeaderboard(ctx context.Context, in *GetLeaderboardRequest, opts ...grpc.CallOption) (*GetLeaderboardResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLeaderboardResponse)
+	err := c.cc.Invoke(ctx, UserService_GetLeaderboard_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -175,6 +226,13 @@ type UserServiceServer interface {
 	CompleteLesson(context.Context, *CompleteLessonRequest) (*CompleteLessonResponse, error)
 	GetCompletedLessons(context.Context, *GetCompletedLessonsRequest) (*GetCompletedLessonsResponse, error)
 	SetSubscription(context.Context, *SetSubscriptionRequest) (*SetSubscriptionResponse, error)
+	AddCourseLimit(context.Context, *AddCourseLimitRequest) (*AddCourseLimitResponse, error)
+	// Изменить баланс (начислить или списать снежинки)
+	ChangeBalance(context.Context, *ChangeBalanceRequest) (*ChangeBalanceResponse, error)
+	// Разблокировать аватарку (выпала в колесе)
+	UnlockAvatar(context.Context, *UnlockAvatarRequest) (*UnlockAvatarResponse, error)
+	// Получить топ студентов
+	GetLeaderboard(context.Context, *GetLeaderboardRequest) (*GetLeaderboardResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -214,6 +272,18 @@ func (UnimplementedUserServiceServer) GetCompletedLessons(context.Context, *GetC
 }
 func (UnimplementedUserServiceServer) SetSubscription(context.Context, *SetSubscriptionRequest) (*SetSubscriptionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetSubscription not implemented")
+}
+func (UnimplementedUserServiceServer) AddCourseLimit(context.Context, *AddCourseLimitRequest) (*AddCourseLimitResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddCourseLimit not implemented")
+}
+func (UnimplementedUserServiceServer) ChangeBalance(context.Context, *ChangeBalanceRequest) (*ChangeBalanceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ChangeBalance not implemented")
+}
+func (UnimplementedUserServiceServer) UnlockAvatar(context.Context, *UnlockAvatarRequest) (*UnlockAvatarResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnlockAvatar not implemented")
+}
+func (UnimplementedUserServiceServer) GetLeaderboard(context.Context, *GetLeaderboardRequest) (*GetLeaderboardResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLeaderboard not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -416,6 +486,78 @@ func _UserService_SetSubscription_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_AddCourseLimit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddCourseLimitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).AddCourseLimit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_AddCourseLimit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).AddCourseLimit(ctx, req.(*AddCourseLimitRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ChangeBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeBalanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ChangeBalance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ChangeBalance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ChangeBalance(ctx, req.(*ChangeBalanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UnlockAvatar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnlockAvatarRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UnlockAvatar(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UnlockAvatar_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UnlockAvatar(ctx, req.(*UnlockAvatarRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetLeaderboard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLeaderboardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetLeaderboard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetLeaderboard_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetLeaderboard(ctx, req.(*GetLeaderboardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -462,6 +604,22 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetSubscription",
 			Handler:    _UserService_SetSubscription_Handler,
+		},
+		{
+			MethodName: "AddCourseLimit",
+			Handler:    _UserService_AddCourseLimit_Handler,
+		},
+		{
+			MethodName: "ChangeBalance",
+			Handler:    _UserService_ChangeBalance_Handler,
+		},
+		{
+			MethodName: "UnlockAvatar",
+			Handler:    _UserService_UnlockAvatar_Handler,
+		},
+		{
+			MethodName: "GetLeaderboard",
+			Handler:    _UserService_GetLeaderboard_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

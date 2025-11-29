@@ -146,6 +146,15 @@ func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileReque
 		displayStreak = 0
 	}
 
+	var unlockedIDs []int32
+	// Базовые аватарки (1-5) доступны всем
+	for i := 1; i <= 5; i++ {
+		unlockedIDs = append(unlockedIDs, int32(i))
+	}
+	for _, ua := range p.UnlockedAvatars {
+		unlockedIDs = append(unlockedIDs, int32(ua.AvatarID))
+	}
+
 	return &userpb.GetProfileResponse{
 		Id:       p.ID.String(),
 		Email:    p.Email,
@@ -165,6 +174,8 @@ func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileReque
 
 		Streak:              displayStreak,
 		IsStreakActiveToday: isActiveToday,
+		Balance:             int32(p.Balance),
+		UnlockedAvatarIds:   unlockedIDs,
 	}, nil
 }
 
@@ -185,6 +196,12 @@ func (s *UserServer) CompleteLesson(ctx context.Context, req *userpb.CompleteLes
 		fmt.Printf("Error updating streak: %v\n", err)
 	}
 
+	if newBalance, err := s.repo.ChangeBalance(ctx, uid, 1); err != nil {
+		fmt.Printf("Error changing balance: %v\n", err)
+	} else {
+		fmt.Printf("New balance: %d\n", newBalance)
+	}
+
 	// 2. Считаем, сколько всего пройдено
 	completedCount, _ := s.repo.CountCompletedLessons(ctx, uid, req.CourseId)
 
@@ -193,7 +210,9 @@ func (s *UserServer) CompleteLesson(ctx context.Context, req *userpb.CompleteLes
 	if req.TotalLessons > 0 {
 		percent = int32((float64(completedCount) / float64(req.TotalLessons)) * 100)
 	}
-	if percent > 100 {
+	if percent >= 100 {
+		s.repo.ChangeBalance(ctx, uid, 50)
+		s.repo.IncrementCompletedCount(ctx, uid)
 		percent = 100
 	}
 
@@ -284,4 +303,42 @@ func (s *UserServer) StartCourse(ctx context.Context, req *userpb.StartCourseReq
 	_ = s.repo.StartCourse(ctx, uc)
 
 	return &userpb.StartCourseResponse{Success: true}, nil
+}
+
+func (s *UserServer) AddCourseLimit(ctx context.Context, req *userpb.AddCourseLimitRequest) (*userpb.AddCourseLimitResponse, error) {
+	uid, _ := uuid.Parse(req.UserId)
+	err := s.repo.AddCourseSlots(ctx, uid, int(req.Count))
+	return &userpb.AddCourseLimitResponse{Success: err == nil}, err
+}
+
+func (s *UserServer) ChangeBalance(ctx context.Context, req *userpb.ChangeBalanceRequest) (*userpb.ChangeBalanceResponse, error) {
+	uid, _ := uuid.Parse(req.UserId)
+	newBal, err := s.repo.ChangeBalance(ctx, uid, int(req.Amount))
+	return &userpb.ChangeBalanceResponse{Success: err == nil, NewBalance: int32(newBal)}, err
+}
+
+func (s *UserServer) UnlockAvatar(ctx context.Context, req *userpb.UnlockAvatarRequest) (*userpb.UnlockAvatarResponse, error) {
+	uid, _ := uuid.Parse(req.UserId)
+	exists, err := s.repo.AddUnlockedAvatar(ctx, uid, int(req.AvatarId))
+	return &userpb.UnlockAvatarResponse{Success: err == nil, AlreadyOwned: exists}, err
+}
+
+func (s *UserServer) GetLeaderboard(ctx context.Context, req *userpb.GetLeaderboardRequest) (*userpb.GetLeaderboardResponse, error) {
+	users, err := s.repo.GetLeaderboard(ctx, int(req.Limit))
+	if err != nil {
+		return nil, err
+	}
+
+	var entries []*userpb.LeaderboardEntry
+	for _, u := range users {
+		entries = append(entries, &userpb.LeaderboardEntry{
+			UserId:         u.ID.String(),
+			Username:       u.Username,
+			AvatarId:       int32(u.AvatarID),
+			Streak:         int32(u.Streak),
+			CompletedCount: int32(u.CompletedCount),
+			Balance:        int32(u.Balance),
+		})
+	}
+	return &userpb.GetLeaderboardResponse{Entries: entries}, nil
 }

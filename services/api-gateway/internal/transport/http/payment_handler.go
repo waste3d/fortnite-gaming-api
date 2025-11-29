@@ -68,3 +68,13 @@ func (h *PaymentHandler) Redeem(c *gin.Context) {
 		"expires_at": res.ExpiresAt,
 	})
 }
+
+func (h *PaymentHandler) SpinWheel(c *gin.Context) {
+	userId := c.GetString("userId")
+	res, err := h.client.Client.SpinWheel(c, &paymentpb.SpinWheelRequest{UserId: userId})
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()}) // Например "Недостаточно средств"
+		return
+	}
+	c.JSON(200, res)
+}
