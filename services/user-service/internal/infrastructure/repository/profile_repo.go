@@ -57,11 +57,36 @@ func (r *ProfileRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.
 
 // === МЕТОДЫ С ИНВАЛИДАЦИЕЙ (Сбросом) КЕША ===
 
-func (r *ProfileRepository) Create(ctx context.Context, profile *domain.Profile) error {
-	// Кеш сбрасывать не надо, профиля еще нет, но на всякий случай
-	return r.db.WithContext(ctx).Create(profile).Error
-}
+// services/user-service/internal/infrastructure/repository/profile_repo.go
 
+func (r *ProfileRepository) Create(ctx context.Context, profile *domain.Profile) error {
+	// Используем транзакцию, чтобы обе операции (создание профиля и аватарок)
+	// были выполнены успешно, либо ни одна из них.
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. Создаем основной профиль пользователя
+		if err := tx.Create(profile).Error; err != nil {
+			// Если возникает ошибка (например, email уже занят), транзакция отменяется.
+			return err
+		}
+
+		// 2. Создаем записи для 5 стандартных разблокированных аватарок
+		defaultAvatars := []domain.UnlockedAvatar{
+			{UserID: profile.ID, AvatarID: 1},
+			{UserID: profile.ID, AvatarID: 2},
+			{UserID: profile.ID, AvatarID: 3},
+			{UserID: profile.ID, AvatarID: 4},
+			{UserID: profile.ID, AvatarID: 5},
+		}
+
+		if err := tx.Create(&defaultAvatars).Error; err != nil {
+			// Если здесь произойдет ошибка, вся транзакция (включая создание профиля) будет отменена.
+			return err
+		}
+
+		// Если ошибок не было, транзакция автоматически коммитится.
+		return nil
+	})
+}
 func (r *ProfileRepository) Update(ctx context.Context, profile *domain.Profile) error {
 	err := r.db.WithContext(ctx).Save(profile).Error
 	if err == nil {
