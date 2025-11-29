@@ -36,7 +36,7 @@ func main() {
 
 	// 3. Миграции (создаст таблицу profiles)
 	log.Println("Running migrations...")
-	if err := db.AutoMigrate(&domain.Profile{}, &domain.UserCourse{}, &domain.CompletedLesson{}); err != nil {
+	if err := db.AutoMigrate(&domain.Profile{}, &domain.UserCourse{}, &domain.CompletedLesson{}, &domain.UnlockedAvatar{}); err != nil {
 		log.Fatalf("Failed to migrate DB: %v", err)
 	}
 
