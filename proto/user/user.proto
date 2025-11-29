@@ -70,12 +70,15 @@ message GetProfileResponse {
   repeated CoursePreview active_courses = 11;
   repeated CoursePreview completed_courses = 12;
   
+  
 
   int32 streak = 13;               // Текущая серия дней (например, 5)
   bool is_streak_active_today = 14; // true = огонек горит (уже позанимался сегодня), false = серый (позанимался вчера)
 
   int32 balance = 15; // Снежинки
   repeated int32 unlocked_avatar_ids = 16; // Список ID доступных аватарок
+
+  int32 rank = 17; // Место пользователя в рейтинге
 }
 
 message UpdateProfileRequest {

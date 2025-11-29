@@ -155,6 +155,11 @@ func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileReque
 		unlockedIDs = append(unlockedIDs, int32(ua.AvatarID))
 	}
 
+	rank, err := s.repo.GetUserRank(ctx, uid)
+	if err != nil {
+		fmt.Printf("Error getting user rank: %v\n", err)
+	}
+
 	return &userpb.GetProfileResponse{
 		Id:       p.ID.String(),
 		Email:    p.Email,
@@ -176,6 +181,7 @@ func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileReque
 		IsStreakActiveToday: isActiveToday,
 		Balance:             int32(p.Balance),
 		UnlockedAvatarIds:   unlockedIDs,
+		Rank:                int32(rank),
 	}, nil
 }
 
