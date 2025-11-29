@@ -26,8 +26,8 @@ type PromoCode struct {
 	Code string `gorm:"primaryKey"` // "START3"
 
 	// К какому тарифу привязан код
-	PlanID uuid.UUID `gorm:"type:uuid"`
-	Plan   Plan      `gorm:"foreignKey:PlanID"`
+	PlanID *uuid.UUID `gorm:"type:uuid"`
+	Plan   Plan       `gorm:"foreignKey:PlanID"`
 
 	Type string
 	// Если ONE_COURSE, тут кол-во слотов. Если SUBSCRIPTION - PlanID

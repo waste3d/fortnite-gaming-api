@@ -16,9 +16,11 @@ func NewPaymentRepository(db *gorm.DB) *PaymentRepository {
 }
 
 // Поиск промокода с жадной загрузкой плана
+
 func (r *PaymentRepository) GetPromoWithPlan(ctx context.Context, code string) (*domain.PromoCode, error) {
 	var promo domain.PromoCode
-	// ILIKE делает поиск нечувствительным к регистру (Start3 == start3)
+	// Preload("Plan") сработает корректно даже с nil, если настроен правильно,
+	// но лучше добавить условие или обработку ошибок. GORM обычно справляется.
 	err := r.db.WithContext(ctx).
 		Preload("Plan").
 		Where("code ILIKE ?", code).

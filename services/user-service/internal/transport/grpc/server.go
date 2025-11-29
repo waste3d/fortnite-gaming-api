@@ -182,8 +182,10 @@ func (s *UserServer) GetProfile(ctx context.Context, req *userpb.GetProfileReque
 func (s *UserServer) CompleteLesson(ctx context.Context, req *userpb.CompleteLessonRequest) (*userpb.CompleteLessonResponse, error) {
 	uid, _ := uuid.Parse(req.UserId)
 
-	// 1. Сохраняем урок как пройденный
-	err := s.repo.AddCompletedLesson(ctx, &domain.CompletedLesson{
+	// 1. Сохраняем урок как пройденный.
+	// Функция AddCompletedLesson возвращает (bool created, error).
+	// created == true только если этот урок еще не был пройден.
+	created, err := s.repo.AddCompletedLesson(ctx, &domain.CompletedLesson{
 		UserID:   uid,
 		CourseID: req.CourseId,
 		LessonID: req.LessonId,
@@ -192,33 +194,50 @@ func (s *UserServer) CompleteLesson(ctx context.Context, req *userpb.CompleteLes
 		return nil, status.Error(codes.Internal, "failed to save lesson")
 	}
 
-	if err := s.repo.CheckAndIncrementStreak(ctx, uid); err != nil {
-		fmt.Printf("Error updating streak: %v\n", err)
+	// 2. Начисляем награды ТОЛЬКО за новые уроки (защита от фарма)
+	if created {
+		// Обновляем стрик
+		if err := s.repo.CheckAndIncrementStreak(ctx, uid); err != nil {
+			fmt.Printf("Error updating streak: %v\n", err)
+		}
+
+		// Начисляем +10 снежинок за урок
+		if newBalance, err := s.repo.ChangeBalance(ctx, uid, 10); err != nil {
+			fmt.Printf("Error changing balance: %v\n", err)
+		} else {
+			fmt.Printf("User %s earned coins. New balance: %d\n", uid, newBalance)
+		}
 	}
 
-	if newBalance, err := s.repo.ChangeBalance(ctx, uid, 1); err != nil {
-		fmt.Printf("Error changing balance: %v\n", err)
-	} else {
-		fmt.Printf("New balance: %d\n", newBalance)
-	}
-
-	// 2. Считаем, сколько всего пройдено
+	// 3. Считаем процент прохождения
 	completedCount, _ := s.repo.CountCompletedLessons(ctx, uid, req.CourseId)
-
-	// 3. Считаем процент (Backend logic!)
 	var percent int32
 	if req.TotalLessons > 0 {
 		percent = int32((float64(completedCount) / float64(req.TotalLessons)) * 100)
 	}
-	if percent >= 100 {
-		s.repo.ChangeBalance(ctx, uid, 50)
-		s.repo.IncrementCompletedCount(ctx, uid)
+	if percent > 100 {
 		percent = 100
 	}
 
-	// 4. Обновляем UserCourse (процент и статус)
-	// Используем ту логику с защитой, которую мы писали в прошлом ответе
-	newStatus, err := s.repo.UpdateProgress(ctx, uid, req.CourseId, percent)
+	// 4. Проверка на завершение курса (Награда 50 снежинок)
+	finalStatus := "active"
+
+	if percent >= 100 {
+		// Получаем ТЕКУЩИЙ статус из БД, чтобы понять, завершаем мы его впервые или нет
+		currentStatus, _ := s.repo.GetUserCourseStatus(ctx, uid, req.CourseId)
+
+		// Если курс еще не был помечен как "completed", значит это первое завершение
+		if currentStatus != "completed" {
+			// Выдаем большую награду
+			s.repo.ChangeBalance(ctx, uid, 50)
+			// Увеличиваем счетчик пройденных курсов для лидерборда
+			s.repo.IncrementCompletedCount(ctx, uid)
+		}
+		finalStatus = "completed"
+	}
+
+	// 5. Обновляем статус и процент в БД
+	_, err = s.repo.UpdateProgress(ctx, uid, req.CourseId, percent)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to update progress")
 	}
@@ -226,7 +245,7 @@ func (s *UserServer) CompleteLesson(ctx context.Context, req *userpb.CompleteLes
 	return &userpb.CompleteLessonResponse{
 		Success:    true,
 		NewPercent: percent,
-		Status:     newStatus,
+		Status:     finalStatus,
 	}, nil
 }
 

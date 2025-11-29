@@ -156,10 +156,15 @@ func (r *ProfileRepository) GetUserCourses(ctx context.Context, userID uuid.UUID
 	return courses, err
 }
 
-func (r *ProfileRepository) AddCompletedLesson(ctx context.Context, item *domain.CompletedLesson) error {
-	return r.db.WithContext(ctx).FirstOrCreate(item).Error
+// Возвращаем bool (created) и error
+func (r *ProfileRepository) AddCompletedLesson(ctx context.Context, item *domain.CompletedLesson) (bool, error) {
+	result := r.db.WithContext(ctx).FirstOrCreate(item)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	// RowsAffected == 1, если запись была создана. 0, если уже существовала.
+	return result.RowsAffected > 0, nil
 }
-
 func (r *ProfileRepository) CountCompletedLessons(ctx context.Context, userID uuid.UUID, courseID string) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&domain.CompletedLesson{}).Where("user_id = ? AND course_id = ?", userID, courseID).Count(&count).Error
@@ -294,4 +299,19 @@ func (r *ProfileRepository) IncrementCompletedCount(ctx context.Context, userID 
 	r.db.WithContext(ctx).Model(&domain.Profile{}).
 		Where("id = ?", userID).
 		Update("completed_count", gorm.Expr("completed_count + 1"))
+}
+
+// GetUserCourseStatus возвращает текущий статус курса ("active" или "completed")
+func (r *ProfileRepository) GetUserCourseStatus(ctx context.Context, userID uuid.UUID, courseID string) (string, error) {
+	var uc domain.UserCourse
+	// Выбираем только поле status для оптимизации
+	err := r.db.WithContext(ctx).
+		Select("status").
+		Where("user_id = ? AND course_id = ?", userID, courseID).
+		First(&uc).Error
+
+	if err != nil {
+		return "", err
+	}
+	return uc.Status, nil
 }
