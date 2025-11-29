@@ -13,6 +13,7 @@ type Plan struct {
 	Price               int       // Цена в рублях
 	Description         string
 	CourseLimit         int  // 1, 5, -1 (безлимит)
+	SnowflakePrice      int  // <<-- ДОБАВЬТЕ ЭТУ СТРОКУ (Цена в снежинках)
 	DeviceLimit         int  // 2, 4
 	IsTgAccess          bool // Доступ к закрытому ТГ
 	DefaultDurationDays int  // 30

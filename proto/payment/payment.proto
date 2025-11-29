@@ -9,7 +9,7 @@ service PaymentService {
   // Для страницы "Активация промокода"
   rpc RedeemPromo (RedeemPromoRequest) returns (RedeemPromoResponse);
 
-  rpc SpinWheel(SpinWheelRequest) returns (SpinWheelResponse);
+  rpc PurchaseItem(PurchaseItemRequest) returns (PurchaseItemResponse);
 }
 
 message Plan {
@@ -17,6 +17,7 @@ message Plan {
   string name = 2;        // "Базовый", "PRO"
   int32 price = 3;
   string description = 4;
+  int32 snowflake_price = 5; // Цена в снежинках
 }
 
 message GetPlansRequest {}
@@ -45,4 +46,17 @@ message SpinWheelResponse {
   int32 prize_value = 2; // Например: 50 (снежинок) или 1 (слот) или ID аватарки
   string message = 3;    // Текст выигрыша для фронта
   int32 remaining_balance = 4;
+}
+message PurchaseItemRequest {
+  string user_id = 1;
+  string item_id = 2; // ID курса (UUID) или ID аватарки (число)
+  string item_type = 3; // "COURSE" или "AVATAR"
+  
+  // Доп. поля, чтобы не делать лишних запросов из payment-service
+  string course_title = 4; 
+  string course_cover_url = 5;
+}
+message PurchaseItemResponse {
+  bool success = 1;
+  string message = 2;
 }

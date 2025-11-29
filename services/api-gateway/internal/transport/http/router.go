@@ -60,7 +60,12 @@ func NewRouter(authHandler *AuthHandler, userHandler *UserHandler, limiter *midd
 			payment.GET("/plans", paymentHandler.GetPlans)
 			// Приватный метод: активировать код может только залогиненный юзер
 			payment.POST("/redeem", middleware.AuthMiddleware(authClient), paymentHandler.Redeem)
-			payment.POST("/spin", middleware.AuthMiddleware(authClient), paymentHandler.SpinWheel)
+		}
+
+		shop := api.Group("/shop")
+		shop.Use(middleware.AuthMiddleware(authClient))
+		{
+			shop.POST("/buy", paymentHandler.PurchaseItem)
 		}
 	}
 

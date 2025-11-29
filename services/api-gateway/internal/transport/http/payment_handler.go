@@ -69,12 +69,42 @@ func (h *PaymentHandler) Redeem(c *gin.Context) {
 	})
 }
 
-func (h *PaymentHandler) SpinWheel(c *gin.Context) {
+func (h *PaymentHandler) PurchaseItem(c *gin.Context) {
 	userId := c.GetString("userId")
-	res, err := h.client.Client.SpinWheel(c, &paymentpb.SpinWheelRequest{UserId: userId})
-	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()}) // Например "Недостаточно средств"
+
+	var req struct {
+		ItemID   string `json:"itemId" binding:"required"`
+		ItemType string `json:"itemType" binding:"required"`
+		// Опциональные поля для покупки курса
+		CourseTitle string `json:"title"`
+		CourseCover string `json:"coverUrl"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "itemId и itemType обязательны"})
 		return
 	}
-	c.JSON(200, res)
+
+	// Если это курс, и не пришли title/cover, можно вернуть ошибку
+	if req.ItemType == "COURSE" && (req.CourseTitle == "" || req.CourseCover == "") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title и coverUrl обязательны для покупки курса"})
+		return
+	}
+
+	grpcReq := &paymentpb.PurchaseItemRequest{
+		UserId:         userId,
+		ItemId:         req.ItemID,
+		ItemType:       req.ItemType,
+		CourseTitle:    req.CourseTitle,
+		CourseCoverUrl: req.CourseCover,
+	}
+
+	res, err := h.client.Client.PurchaseItem(c, grpcReq)
+	if err != nil {
+		// Ошибки от gRPC уже в правильном формате (например, "Недостаточно снежинок")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 }
